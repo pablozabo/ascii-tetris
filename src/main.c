@@ -287,6 +287,6 @@ static void load_score(void)
 		return;
 	}
 
-	fscanf(f, "%d;", &g_score.record);
+	fscanf(f, "%hu;", &g_score.record);
 	fclose(f);
 }

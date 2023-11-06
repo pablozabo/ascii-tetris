@@ -7,6 +7,12 @@
 #define RADIANS_TO_DEGREES(radians) (radians * (180 / MATH_PI))
 #define DEGREES_TO_RADIANS(degrees) (degrees * (MATH_PI / 180))
 
+typedef struct vec2_t
+{
+	float32_t x;
+	float32_t y;
+} vec2_t;
+
 void   vec2_add_to(vec2_t *vec, vec2_t val);
 vec2_t vec2_add(vec2_t val1, vec2_t val2);
 void   vec2_sub_to(vec2_t *vec, vec2_t val);

@@ -127,11 +127,6 @@ typedef enum custom_color_t
 	CUSTOM_COLOR_WHITE_HIGH	   = 47
 } custom_color_t;
 
-typedef struct vec2_t
-{
-	float32_t x;
-	float32_t y;
-} vec2_t;
 
 typedef struct score_t
 {

@@ -1,25 +1,21 @@
 #include "screen_stage.h"
 #include "../common.h"
 #include "../data_structures/data_structures.h"
-#include "../vec2.h"
+#include "../shapes.h"
 
 extern int		 g_key;
 extern score_t	 g_score;
 extern float32_t g_delta_time;
 
-typedef enum player_direction_t
-{
-	PLAYER_DIRECTION_IDLE  = 0,
-	PLAYER_DIRECTION_LEFT  = 1,
-	PLAYER_DIRECTION_RIGHT = 2
-} player_direction_t;
+#define BOARD_ROWS 20
+#define BOARD_COLS 10
 
-static const uint8_t c_win_board_width		 = 20;
-static const uint8_t c_win_board_height		 = 20;
+static const uint8_t c_win_board_width		 = 22;
+static const uint8_t c_win_board_height		 = 22;
 static const uint8_t c_win_next_shape_width	 = 20;
-static const uint8_t c_win_next_shape_height = 10;
+static const uint8_t c_win_next_shape_height = 11;
 static const uint8_t c_win_score_width		 = 20;
-static const uint8_t c_win_score_height		 = 10;
+static const uint8_t c_win_score_height		 = 11;
 
 static const uint8_t  c_win_padding	   = 1;
 static const uint32_t c_score_velocity = 30;
@@ -28,16 +24,23 @@ static WINDOW *win_board;
 static WINDOW *win_next_shape;
 static WINDOW *win_score;
 
+shape_t next_shape;
+shape_t current_shape;
+uint8_t board[BOARD_ROWS * BOARD_COLS];
+
 // init
-static void create_windows(void);
+static void
+create_windows(void);
 // update
 static void handle_input(void);
 static void save_score(void);
 static void update_score_labels(void);
+static void set_next_shape(void);
 // render
 static void render_win_board(void);
 static void render_win_next_shape(void);
 static void render_win_score(void);
+static void render_shape(WINDOW *win, shape_t *shape);
 
 void screen_stage_init(void)
 {
@@ -45,6 +48,8 @@ void screen_stage_init(void)
 
 	srand(time(NULL));
 	create_windows();
+	set_next_shape();
+
 	render_win_board();
 	render_win_next_shape();
 	render_win_score();
@@ -88,6 +93,7 @@ void screen_stage_render(void)
 	wrefresh(win_board);
 }
 
+// UPDATE
 static void create_windows(void)
 {
 	uint8_t offset_y, offset_x;
@@ -166,6 +172,15 @@ static void update_score_labels(void)
 	// }
 }
 
+static void set_next_shape(void)
+{
+	next_shape.type	 = SHAPE_TYPE_T;
+	next_shape.pos.x = c_win_next_shape_width * 0.5 - SHAPE_COLS * 0.5 - c_win_padding;
+	next_shape.pos.y = c_win_next_shape_height * 0.5 - SHAPE_ROWS * 0.5;
+	memcpy(next_shape.val, c_shape_list[next_shape.type], SHAPE_ROWS * SHAPE_COLS);
+}
+
+// RENDER
 static void render_win_board(void)
 {
 	wattron(win_board, COLOR_PAIR(COLOR_PAIR_MAGENTA_MEDIUM));
@@ -179,10 +194,9 @@ static void render_win_next_shape()
 	const char *title		= "NEXT";
 	const char *lines_label = "Level:";
 
-	uint8_t padding_x = 2,
+	uint8_t padding_x = c_win_padding * 2,
 			padding_y = c_win_next_shape_height - 2;
-
-	uint8_t l = 0;
+	uint8_t l		  = 0;
 
 	sprintf(level, "%d", l);
 
@@ -199,6 +213,8 @@ static void render_win_next_shape()
 	mvwprintw(win_next_shape, padding_y, padding_x, "%s", lines_label);
 	mvwprintw(win_next_shape, padding_y, strlen(lines_label) + padding_x + 1, "%s", level);
 	wattroff(win_next_shape, COLOR_PAIR(COLOR_PAIR_GREEN_DEFAULT));
+	// shape
+	render_shape(win_next_shape, &next_shape);
 
 	wrefresh(win_next_shape);
 }
@@ -211,8 +227,8 @@ static void render_win_score()
 	const char *current_score_label = "Current:";
 	const char *max_score_label		= "Top:";
 
-	uint8_t padding_x = 2,
-			padding_y = 2;
+	uint8_t padding_x = c_win_padding * 2,
+			padding_y = c_win_padding * 2;
 
 	sprintf(current_score, "%d", (uint16_t)(g_score.current_label));
 	sprintf(max_score, "%d", (uint16_t)(g_score.record_label));
@@ -235,4 +251,26 @@ static void render_win_score()
 	wattroff(win_score, COLOR_PAIR(COLOR_PAIR_GREEN_DEFAULT));
 
 	wrefresh(win_score);
+}
+
+static void render_shape(WINDOW *win, shape_t *shape)
+{
+	uint8_t color = c_shape_colors[shape->type];
+
+	wattron(win, COLOR_PAIR(color));
+
+	for (uint8_t y = 0; y < SHAPE_ROWS; y++)
+	{
+		for (uint8_t x = 0; x < SHAPE_COLS; x++)
+		{
+			bool fill = shape->val[SHAPE_COLS * y + x];
+
+			if (fill)
+			{
+				mvwprintw(win, shape->pos.y + y, shape->pos.x + (x * 2), "[]");
+			}
+		}
+	}
+
+	wattroff(win, COLOR_PAIR(color));
 }
