@@ -10,15 +10,15 @@ extern float32_t g_delta_time;
 #define BOARD_ROWS 20
 #define BOARD_COLS 10
 
-// typedef enum player_action_t
-// {
-// 	PLAYER_ACTION_IDLE		  = 0,
-// 	PLAYER_ACTION_MOVE_LEFT	  = 1,
-// 	PLAYER_ACTION_MOVEL_RIGHT = 2,
-// 	PLAYER_ACTION_ROTATE	  = 3,
-// 	PLAYER_ACTION_SPEEDUP	  = 4,
-// 	PLAYER_ACTION_HARD_DROP	  = 5,
-// } player_action_t;
+typedef enum player_action_t
+{
+	PLAYER_ACTION_IDLE		 = 0,
+	PLAYER_ACTION_MOVE_LEFT	 = 1,
+	PLAYER_ACTION_MOVE_RIGHT = 2,
+	PLAYER_ACTION_ROTATE	 = 3,
+	PLAYER_ACTION_SPEEDUP	 = 4,
+	PLAYER_ACTION_HARD_DROP	 = 5,
+} player_action_t;
 
 static const uint8_t c_win_board_width		 = 22;
 static const uint8_t c_win_board_height		 = 22;
@@ -27,20 +27,23 @@ static const uint8_t c_win_next_shape_height = 11;
 static const uint8_t c_win_score_width		 = 20;
 static const uint8_t c_win_score_height		 = 11;
 
-static const uint8_t  c_win_padding		 = 1;
-static const uint32_t c_score_velocity	 = 30;
-static const uint32_t c_speedup_velocity = 3;
+static const uint8_t   c_win_padding		 = 1;
+static const uint8_t   c_score_velocity		 = 30;
+static const uint8_t   c_speedup_velocity	 = 20;
+static const uint8_t   c_max_level			 = 20;
+static const float32_t c_shape_base_velocity = 1; // 1 row per second
 
 static WINDOW *win_board;
 static WINDOW *win_next_shape;
 static WINDOW *win_score;
 
-uint8_t board[BOARD_ROWS * BOARD_COLS];
-shape_t next_shape;
-shape_t current_shape;
-// uint8_t player_action;
-uint8_t level;
-uint8_t velocity;
+static uint8_t	 board[BOARD_ROWS * BOARD_COLS];
+static shape_t	 next_shape;
+static shape_t	 current_shape;
+static uint8_t	 player_action;
+static uint8_t	 level;
+static uint8_t	 velocity;
+static float32_t current_shape_elapsed_time;
 
 // init
 static void
@@ -65,9 +68,10 @@ static void render_shape(WINDOW *win, shape_t *shape);
 
 void screen_stage_init(void)
 {
-	g_score.record_label = g_score.record;
-	// player_action		 = PLAYER_ACTION_IDLE;
-	level = 1;
+	g_score.record_label	   = g_score.record;
+	player_action			   = PLAYER_ACTION_IDLE;
+	level					   = 1;
+	current_shape_elapsed_time = 0;
 
 	srand(time(NULL));
 	create_windows();
@@ -117,7 +121,7 @@ void screen_stage_render(void)
 
 	wclear(win_board);
 	render_win_board();
-	// TODO: draw shapes in board
+	render_shape(win_board, &current_shape);
 	wrefresh(win_board);
 }
 
@@ -139,28 +143,62 @@ static void create_windows(void)
 
 static void handle_input(void)
 {
+	player_action = PLAYER_ACTION_IDLE;
+
 	if (g_key > 0)
 	{
 		if (g_key == KEY_LEFT)
 		{
-			current_shape.pos.x -= 1;
+			player_action = PLAYER_ACTION_MOVE_LEFT;
 		}
 		else if (g_key == KEY_RIGHT)
 		{
-			current_shape.pos.x += 1;
+			player_action = PLAYER_ACTION_MOVE_RIGHT;
 		}
 		else if (g_key == KEY_UP)
 		{
-			rotate_shape();
+			player_action = PLAYER_ACTION_ROTATE;
 		}
 		else if (g_key == KEY_DOWN && level < c_speedup_velocity)
 		{
-			velocity = c_speedup_velocity;
+			player_action = PLAYER_ACTION_SPEEDUP;
 		}
 		else if (g_key == CH_SPACE)
 		{
-			drop_shape();
+			player_action = PLAYER_ACTION_HARD_DROP;
 		}
+	}
+}
+
+static void move_shape(void)
+{
+	current_shape_elapsed_time += g_delta_time;
+
+	if (player_action == PLAYER_ACTION_MOVE_LEFT)
+	{
+		current_shape.pos.x -= 1;
+	}
+	else if (player_action == PLAYER_ACTION_MOVE_RIGHT)
+	{
+		current_shape.pos.x += 1;
+	}
+	else if (player_action == PLAYER_ACTION_ROTATE)
+	{
+		rotate_shape();
+	}
+	else if (player_action == PLAYER_ACTION_SPEEDUP)
+	{
+		velocity = c_speedup_velocity;
+	}
+
+	if (player_action == PLAYER_ACTION_HARD_DROP)
+	{
+		drop_shape();
+	}
+	else if (current_shape_elapsed_time >= (c_shape_base_velocity - (velocity * 0.05)))
+	{
+		current_shape_elapsed_time = 0;
+		current_shape.pos.y += 1;
 	}
 }
 
@@ -169,10 +207,6 @@ static void rotate_shape(void)
 }
 
 static void drop_shape(void)
-{
-}
-
-static void move_shape(void)
 {
 }
 
@@ -186,7 +220,7 @@ static void process_board_rows(void)
 
 static void set_next_shape(void)
 {
-	next_shape.type	 = SHAPE_TYPE_T;
+	next_shape.type	 = rand() % SHAPES_COUNT;
 	next_shape.pos.x = c_win_next_shape_width * 0.5 - SHAPE_COLS * 0.5 - c_win_padding;
 	next_shape.pos.y = c_win_next_shape_height * 0.5 - SHAPE_ROWS * 0.5;
 	memcpy(next_shape.val, c_shape_list[next_shape.type], SHAPE_ROWS * SHAPE_COLS);
