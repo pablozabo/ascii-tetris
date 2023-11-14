@@ -40,18 +40,19 @@ static WINDOW *win_score;
 static uint8_t	 board[BOARD_ROWS * BOARD_COLS];
 static shape_t	 next_shape;
 static shape_t	 current_shape;
+static float32_t current_shape_elapsed_time;
 static uint8_t	 player_action;
 static uint8_t	 level;
 static uint8_t	 velocity;
-static float32_t current_shape_elapsed_time;
+static uint8_t	 board_height; // number of rows with one or more filled cells
 
 // init
-static void
-create_windows(void);
+static void create_windows(void);
 // update
 static void handle_input(void);
 static void move_shape(void);
 static void rotate_shape(void);
+static void set_shape_padding(void);
 static void drop_shape(void);
 static void handle_collision(void);
 static void process_board_rows(void);
@@ -59,7 +60,6 @@ static void set_next_shape(void);
 static void set_current_shape(void);
 static void save_score(void);
 static void update_score_labels(void);
-
 // render
 static void render_win_board(void);
 static void render_win_next_shape(void);
@@ -72,6 +72,7 @@ void screen_stage_init(void)
 	player_action			   = PLAYER_ACTION_IDLE;
 	level					   = 1;
 	current_shape_elapsed_time = 0;
+	board_height			   = 0;
 
 	srand(time(NULL));
 	create_windows();
@@ -204,6 +205,72 @@ static void move_shape(void)
 
 static void rotate_shape(void)
 {
+	bool shape_aux[SHAPE_ROWS * SHAPE_COLS];
+
+	for (uint8_t y = 0; y < SHAPE_ROWS; y++)
+	{
+		for (uint8_t x = 0; x < SHAPE_COLS; x++)
+		{
+			bool fill = current_shape.val[(SHAPE_COLS * (SHAPE_ROWS - x - 1)) + y];
+
+			shape_aux[SHAPE_COLS * y + x] = fill;
+		}
+	}
+
+	memcpy(current_shape.val, shape_aux, SHAPE_ROWS * SHAPE_COLS);
+	set_shape_padding();
+}
+
+static void set_shape_padding(void)
+{
+	int8_t padding_left	  = -1;
+	int8_t padding_right  = -1;
+	int8_t padding_top	  = -1;
+	int8_t padding_bottom = -1;
+
+	for (uint8_t y = 0; y < SHAPE_ROWS; y++)
+	{
+		for (uint8_t x = 0; x < SHAPE_COLS; x++)
+		{
+			// left
+			bool fill = current_shape.val[SHAPE_COLS * y + x];
+
+			if ((padding_left == -1 || x < padding_left) && fill)
+			{
+				padding_left = x;
+			}
+
+			// right
+			fill = current_shape.val[SHAPE_COLS * y + (SHAPE_COLS - x - 1)];
+
+			if ((padding_right == -1 || x < padding_right) && fill)
+			{
+				padding_right = x;
+			}
+
+			// top
+			fill = current_shape.val[SHAPE_COLS * x + y];
+
+			if ((padding_top == -1 || x < padding_top) && fill)
+			{
+				padding_top = x;
+			}
+
+			// bottom
+			fill = current_shape.val[(SHAPE_COLS * (SHAPE_ROWS - x - 1)) + y];
+
+			if ((padding_bottom == -1 || x < padding_bottom) && fill)
+			{
+				padding_bottom = x;
+			}
+		}
+	}
+
+	current_shape.padding_left	 = padding_left;
+	current_shape.padding_right	 = padding_right;
+	current_shape.padding_top	 = padding_top;
+	current_shape.padding_bottom = padding_bottom;
+	current_shape.width			 = SHAPE_COLS - padding_left - padding_right;
 }
 
 static void drop_shape(void)
@@ -212,6 +279,16 @@ static void drop_shape(void)
 
 static void handle_collision(void)
 {
+	uint8_t windows_width_no_padding = c_win_board_width - (c_win_padding * 2);
+
+	if (current_shape.pos.x < 0)
+	{
+		current_shape.pos.x++;
+	}
+	else if ((current_shape.pos.x + (current_shape.width * 2)) >= windows_width_no_padding)
+	{
+		current_shape.pos.x = windows_width_no_padding - (current_shape.width * 2);
+	}
 }
 
 static void process_board_rows(void)
@@ -229,9 +306,10 @@ static void set_next_shape(void)
 static void set_current_shape(void)
 {
 	current_shape.type	= next_shape.type;
-	current_shape.pos.x = c_win_board_width * 0.5 - SHAPE_COLS * 0.5 - c_win_padding;
+	current_shape.pos.x = c_win_board_width * 0.5 - SHAPE_COLS * 0.5;
 	current_shape.pos.y = 0;
 	memcpy(current_shape.val, c_shape_list[current_shape.type], SHAPE_ROWS * SHAPE_COLS);
+	set_shape_padding();
 }
 
 static void save_score(void)
@@ -360,7 +438,7 @@ static void render_shape(WINDOW *win, shape_t *shape)
 
 			if (fill)
 			{
-				mvwprintw(win, shape->pos.y + y, shape->pos.x + (x * 2), "[]");
+				mvwprintw(win, shape->pos.y + y + c_win_padding, shape->pos.x + (x * 2) + c_win_padding - (shape->padding_left * 2), "[]");
 			}
 		}
 	}

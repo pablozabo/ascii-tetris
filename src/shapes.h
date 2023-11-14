@@ -90,9 +90,14 @@ typedef enum shape_type_t
 
 typedef struct shape_t
 {
+	bool		 val[SHAPE_ROWS * SHAPE_COLS];
 	vec2_t		 pos;
 	shape_type_t type;
-	bool		 val[SHAPE_ROWS * SHAPE_COLS];
+	uint8_t		 padding_left;
+	uint8_t		 padding_right;
+	uint8_t		 padding_top;
+	uint8_t		 padding_bottom;
+	uint8_t		 width;
 } shape_t;
 
 #endif
