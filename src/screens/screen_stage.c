@@ -271,6 +271,7 @@ static void set_shape_padding(void)
 	current_shape.padding_top	 = padding_top;
 	current_shape.padding_bottom = padding_bottom;
 	current_shape.width			 = SHAPE_COLS - padding_left - padding_right;
+	current_shape.height		 = SHAPE_ROWS - padding_top - padding_bottom;
 }
 
 static void drop_shape(void)
@@ -281,13 +282,19 @@ static void handle_collision(void)
 {
 	uint8_t windows_width_no_padding = c_win_board_width - (c_win_padding * 2);
 
-	if (current_shape.pos.x < 0)
+	if ((current_shape.pos.x + (current_shape.padding_left * 2)) < 0)
 	{
 		current_shape.pos.x++;
 	}
-	else if ((current_shape.pos.x + (current_shape.width * 2)) >= windows_width_no_padding)
+	else if ((current_shape.pos.x + (current_shape.padding_left * 2) + (current_shape.width * 2)) >= windows_width_no_padding)
 	{
-		current_shape.pos.x = windows_width_no_padding - (current_shape.width * 2);
+		current_shape.pos.x = windows_width_no_padding - (current_shape.width * 2) - (current_shape.padding_left * 2);
+	}
+
+	if (current_shape.pos.y + current_shape.padding_top + current_shape.height >= (c_win_board_height - 1))
+	{
+		set_current_shape();
+		set_next_shape();
 	}
 }
 
@@ -361,6 +368,7 @@ static void render_win_board(void)
 
 static void render_win_next_shape()
 {
+	wclear(win_next_shape);
 	char		level[3]	= { '\0' };
 	const char *title		= "NEXT";
 	const char *lines_label = "Level:";
@@ -438,7 +446,7 @@ static void render_shape(WINDOW *win, shape_t *shape)
 
 			if (fill)
 			{
-				mvwprintw(win, shape->pos.y + y + c_win_padding, shape->pos.x + (x * 2) + c_win_padding - (shape->padding_left * 2), "[]");
+				mvwprintw(win, shape->pos.y + y + c_win_padding, shape->pos.x + (x * 2) + c_win_padding, "[]");
 			}
 		}
 	}
