@@ -92,6 +92,7 @@ typedef struct shape_t
 {
 	bool		 val[SHAPE_ROWS * SHAPE_COLS];
 	vec2_t		 pos;
+	vec2_t		 prev_pos;
 	shape_type_t type;
 	uint8_t		 padding_left;
 	uint8_t		 padding_right;

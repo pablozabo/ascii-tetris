@@ -37,7 +37,7 @@ static WINDOW *win_board;
 static WINDOW *win_next_shape;
 static WINDOW *win_score;
 
-static uint8_t	 board[BOARD_ROWS * BOARD_COLS];
+static uint8_t	 board[BOARD_ROWS * BOARD_COLS] = { 0 };
 static shape_t	 next_shape;
 static shape_t	 current_shape;
 static float32_t current_shape_elapsed_time;
@@ -52,9 +52,10 @@ static void create_windows(void);
 static void handle_input(void);
 static void move_shape(void);
 static void rotate_shape(void);
-static void set_shape_padding(void);
+static void set_shape_padding(shape_t *shape);
 static void drop_shape(void);
 static void handle_collision(void);
+static void set_shape_on_board(void);
 static void process_board_rows(void);
 static void set_next_shape(void);
 static void set_current_shape(void);
@@ -65,6 +66,7 @@ static void render_win_board(void);
 static void render_win_next_shape(void);
 static void render_win_score(void);
 static void render_shape(WINDOW *win, shape_t *shape);
+static void render_board(void);
 
 void screen_stage_init(void)
 {
@@ -123,6 +125,7 @@ void screen_stage_render(void)
 	wclear(win_board);
 	render_win_board();
 	render_shape(win_board, &current_shape);
+	render_board();
 	wrefresh(win_board);
 }
 
@@ -175,6 +178,9 @@ static void move_shape(void)
 {
 	current_shape_elapsed_time += g_delta_time;
 
+	current_shape.prev_pos.x = current_shape.pos.x;
+	current_shape.prev_pos.y = current_shape.pos.y;
+
 	if (player_action == PLAYER_ACTION_MOVE_LEFT)
 	{
 		current_shape.pos.x -= 1;
@@ -218,10 +224,10 @@ static void rotate_shape(void)
 	}
 
 	memcpy(current_shape.val, shape_aux, SHAPE_ROWS * SHAPE_COLS);
-	set_shape_padding();
+	set_shape_padding(&current_shape);
 }
 
-static void set_shape_padding(void)
+static void set_shape_padding(shape_t *shape)
 {
 	int8_t padding_left	  = -1;
 	int8_t padding_right  = -1;
@@ -233,7 +239,7 @@ static void set_shape_padding(void)
 		for (uint8_t x = 0; x < SHAPE_COLS; x++)
 		{
 			// left
-			bool fill = current_shape.val[SHAPE_COLS * y + x];
+			bool fill = shape->val[SHAPE_COLS * y + x];
 
 			if ((padding_left == -1 || x < padding_left) && fill)
 			{
@@ -241,7 +247,7 @@ static void set_shape_padding(void)
 			}
 
 			// right
-			fill = current_shape.val[SHAPE_COLS * y + (SHAPE_COLS - x - 1)];
+			fill = shape->val[SHAPE_COLS * y + (SHAPE_COLS - x - 1)];
 
 			if ((padding_right == -1 || x < padding_right) && fill)
 			{
@@ -249,7 +255,7 @@ static void set_shape_padding(void)
 			}
 
 			// top
-			fill = current_shape.val[SHAPE_COLS * x + y];
+			fill = shape->val[SHAPE_COLS * x + y];
 
 			if ((padding_top == -1 || x < padding_top) && fill)
 			{
@@ -257,7 +263,7 @@ static void set_shape_padding(void)
 			}
 
 			// bottom
-			fill = current_shape.val[(SHAPE_COLS * (SHAPE_ROWS - x - 1)) + y];
+			fill = shape->val[(SHAPE_COLS * (SHAPE_ROWS - x - 1)) + y];
 
 			if ((padding_bottom == -1 || x < padding_bottom) && fill)
 			{
@@ -266,12 +272,12 @@ static void set_shape_padding(void)
 		}
 	}
 
-	current_shape.padding_left	 = padding_left;
-	current_shape.padding_right	 = padding_right;
-	current_shape.padding_top	 = padding_top;
-	current_shape.padding_bottom = padding_bottom;
-	current_shape.width			 = SHAPE_COLS - padding_left - padding_right;
-	current_shape.height		 = SHAPE_ROWS - padding_top - padding_bottom;
+	shape->padding_left	  = padding_left;
+	shape->padding_right  = padding_right;
+	shape->padding_top	  = padding_top;
+	shape->padding_bottom = padding_bottom;
+	shape->width		  = SHAPE_COLS - padding_left - padding_right;
+	shape->height		  = SHAPE_ROWS - padding_top - padding_bottom;
 }
 
 static void drop_shape(void)
@@ -280,21 +286,75 @@ static void drop_shape(void)
 
 static void handle_collision(void)
 {
-	uint8_t windows_width_no_padding = c_win_board_width - (c_win_padding * 2);
-
-	if ((current_shape.pos.x + (current_shape.padding_left * 2)) < 0)
+	// side board collision
+	if ((current_shape.pos.x + current_shape.padding_left) < 0)
 	{
 		current_shape.pos.x++;
 	}
-	else if ((current_shape.pos.x + (current_shape.padding_left * 2) + (current_shape.width * 2)) >= windows_width_no_padding)
+	else if ((current_shape.pos.x + current_shape.padding_left + current_shape.width) > BOARD_COLS)
 	{
-		current_shape.pos.x = windows_width_no_padding - (current_shape.width * 2) - (current_shape.padding_left * 2);
+		current_shape.pos.x = BOARD_COLS - current_shape.width - current_shape.padding_left;
 	}
 
-	if (current_shape.pos.y + current_shape.padding_top + current_shape.height >= (c_win_board_height - 1))
+	// bottom board collision
+	uint8_t shape_bottom_y = current_shape.pos.y + current_shape.padding_top + current_shape.height;
+	bool	y_collided	   = shape_bottom_y > BOARD_ROWS;
+
+	// board blocks collision
+	if (!y_collided && shape_bottom_y > (BOARD_ROWS - board_height))
 	{
+		for (uint8_t y = 0; y < current_shape.height && !y_collided; y++)
+		{
+			for (uint8_t x = 0; x < current_shape.width && !y_collided; x++)
+			{
+				bool	 fill = current_shape.val[SHAPE_COLS * (y + current_shape.padding_top) + (x + current_shape.padding_left)];
+				uint16_t index =
+					(BOARD_COLS *
+						 (uint16_t)(current_shape.pos.y + current_shape.padding_top + y) +
+					 (uint16_t)(current_shape.pos.x + current_shape.padding_left + x));
+
+				y_collided = fill && board[index] > 0;
+			}
+		}
+	}
+
+	if (y_collided)
+	{
+		current_shape.pos.x = current_shape.prev_pos.x;
+		current_shape.pos.y = current_shape.prev_pos.y;
+
+		set_shape_on_board();
 		set_current_shape();
 		set_next_shape();
+	}
+}
+
+static void set_shape_on_board(void)
+{
+	uint8_t color  = c_shape_colors[current_shape.type];
+	uint8_t height = BOARD_ROWS - (current_shape.pos.y + current_shape.padding_top);
+
+	if (height > board_height)
+	{
+		board_height = height;
+	}
+
+	for (uint8_t y = 0; y < current_shape.height; y++)
+	{
+		for (uint8_t x = 0; x < current_shape.width; x++)
+		{
+			bool fill = current_shape.val[SHAPE_COLS * (y + current_shape.padding_top) + (x + current_shape.padding_left)];
+
+			if (fill)
+			{
+				uint16_t index =
+					BOARD_COLS *
+						(uint16_t)(current_shape.pos.y + current_shape.padding_top + y) +
+					(uint16_t)(current_shape.pos.x + current_shape.padding_left + x);
+
+				board[index] = color;
+			}
+		}
 	}
 }
 
@@ -304,19 +364,23 @@ static void process_board_rows(void)
 
 static void set_next_shape(void)
 {
-	next_shape.type	 = rand() % SHAPES_COUNT;
-	next_shape.pos.x = c_win_next_shape_width * 0.5 - SHAPE_COLS * 0.5 - c_win_padding;
-	next_shape.pos.y = c_win_next_shape_height * 0.5 - SHAPE_ROWS * 0.5;
+	next_shape.type = rand() % SHAPES_COUNT;
 	memcpy(next_shape.val, c_shape_list[next_shape.type], SHAPE_ROWS * SHAPE_COLS);
+	set_shape_padding(&next_shape);
+
+	next_shape.pos.x = (BOARD_COLS - (c_win_padding * 2)) * 0.5 - next_shape.width * 0.5 + next_shape.padding_left;
+	next_shape.pos.y = c_win_next_shape_height * 0.5 - next_shape.height * 0.5 - next_shape.padding_top - c_win_padding;
 }
 
 static void set_current_shape(void)
 {
-	current_shape.type	= next_shape.type;
-	current_shape.pos.x = c_win_board_width * 0.5 - SHAPE_COLS * 0.5;
-	current_shape.pos.y = 0;
+	current_shape.type = next_shape.type;
 	memcpy(current_shape.val, c_shape_list[current_shape.type], SHAPE_ROWS * SHAPE_COLS);
-	set_shape_padding();
+	set_shape_padding(&current_shape);
+
+	current_shape.pos.x = floor(BOARD_COLS * 0.5 - current_shape.width * 0.5 + current_shape.padding_left);
+	// current_shape.pos.x -= (uint8_t)current_shape.pos.x % 2;
+	current_shape.pos.y = 0;
 }
 
 static void save_score(void)
@@ -446,10 +510,31 @@ static void render_shape(WINDOW *win, shape_t *shape)
 
 			if (fill)
 			{
-				mvwprintw(win, shape->pos.y + y + c_win_padding, shape->pos.x + (x * 2) + c_win_padding, "[]");
+				mvwprintw(win, shape->pos.y + y + c_win_padding, (shape->pos.x * 2) + (x * 2) + c_win_padding, "[]");
 			}
 		}
 	}
 
 	wattroff(win, COLOR_PAIR(color));
+}
+
+static void render_board(void)
+{
+	uint8_t height = BOARD_ROWS - board_height;
+	uint8_t color  = 0;
+
+	for (uint8_t y = BOARD_ROWS - 1; y >= height; y--)
+	{
+		for (uint8_t x = 0; x < BOARD_COLS; x++)
+		{
+			color = board[BOARD_COLS * y + x];
+
+			if (color)
+			{
+				wattron(win_board, COLOR_PAIR(color));
+				mvwprintw(win_board, y + c_win_padding, (x * 2) + c_win_padding, "[]");
+				wattroff(win_board, COLOR_PAIR(color));
+			}
+		}
+	}
 }
