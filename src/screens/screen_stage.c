@@ -44,11 +44,11 @@ static float32_t current_shape_elapsed_time;
 static uint8_t	 player_action;
 static uint8_t	 level;
 static uint8_t	 velocity;
-static uint8_t	 board_height; // number of rows with one or more filled cells
+static uint8_t	 board_height; // number of board rows with one or more filled cells
 
-// init
+// INIT
 static void create_windows(void);
-// update
+// UPDATE
 static void handle_input(void);
 static void move_shape(void);
 static void rotate_shape(void);
@@ -61,7 +61,7 @@ static void set_next_shape(void);
 static void set_current_shape(void);
 static void save_score(void);
 static void update_score_labels(void);
-// render
+// RENDER
 static void render_win_board(void);
 static void render_win_next_shape(void);
 static void render_win_score(void);
@@ -322,7 +322,10 @@ static void handle_collision(void)
 	{
 		current_shape.pos.x = current_shape.prev_pos.x;
 		current_shape.pos.y = current_shape.prev_pos.y;
+	}
 
+	if (y_collided && player_action != PLAYER_ACTION_MOVE_LEFT && player_action != PLAYER_ACTION_MOVE_RIGHT)
+	{
 		set_shape_on_board();
 		set_current_shape();
 		set_next_shape();
@@ -360,6 +363,23 @@ static void set_shape_on_board(void)
 
 static void process_board_rows(void)
 {
+	// 1st step: from back to front, identify completed row index and store
+	// them in an array.
+
+	// for (uint8_t y = BOARD_ROWS - 1; y >= height; y--)
+	// {
+	// 	for (uint8_t x = 0; x < BOARD_COLS; x++)
+	// 	{
+	// 		color = board[BOARD_COLS * y + x];
+
+	// 		if (color)
+	// 		{
+	// 			wattron(win_board, COLOR_PAIR(color));
+	// 			mvwprintw(win_board, y + c_win_padding, (x * 2) + c_win_padding, "[]");
+	// 			wattroff(win_board, COLOR_PAIR(color));
+	// 		}
+	// 	}
+	// }
 }
 
 static void set_next_shape(void)
