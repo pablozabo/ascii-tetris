@@ -27,24 +27,27 @@ static const uint8_t c_win_next_shape_height = 11;
 static const uint8_t c_win_score_width		 = 20;
 static const uint8_t c_win_score_height		 = 11;
 
-static const uint8_t   c_win_padding		 = 1;
-static const uint8_t   c_score_velocity		 = 30;
-static const uint8_t   c_speedup_velocity	 = 20;
-static const uint8_t   c_max_level			 = 20;
-static const float32_t c_shape_base_velocity = 1; // 1 row per second
+static const uint8_t   c_win_padding					= 1;
+static const uint8_t   c_score_velocity					= 30;
+static const uint8_t   c_speedup_velocity				= 20;
+static const uint8_t   c_max_level						= 20;
+static const float32_t c_shape_base_velocity			= 1; // 1 row per second
+static const float32_t c_filled_rows_animation_lifetime = 0.3;
 
 static WINDOW *win_board;
 static WINDOW *win_next_shape;
 static WINDOW *win_score;
 
-static uint8_t	 board[BOARD_ROWS * BOARD_COLS] = { 0 };
-static shape_t	 next_shape;
-static shape_t	 current_shape;
-static float32_t current_shape_elapsed_time;
-static uint8_t	 player_action;
-static uint8_t	 level;
-static uint8_t	 velocity;
-static uint8_t	 board_top_row_filled;
+static uint8_t		board[BOARD_ROWS * BOARD_COLS] = { 0 };
+static shape_t		next_shape;
+static shape_t		current_shape;
+static float32_t	current_shape_elapsed_time;
+static uint8_t		player_action;
+static uint8_t		level;
+static uint8_t		velocity;
+static uint8_t		board_top_row_filled;
+static sparse_set_t filled_rows_indexes;
+static float32_t	filled_rows_elapsed_time;
 
 // INIT
 static void create_windows(void);
@@ -56,7 +59,8 @@ static void set_shape_padding(shape_t *shape);
 static void drop_shape(void);
 static void handle_collision(void);
 static void set_shape_on_board(void);
-static void process_board_rows(void);
+static void scan_board_filled_rows(void);
+static void process_board_filled_rows(void);
 static void set_next_shape(void);
 static void set_current_shape(void);
 static void save_score(void);
@@ -75,6 +79,7 @@ void screen_stage_init(void)
 	level					   = 1;
 	current_shape_elapsed_time = 0;
 	board_top_row_filled	   = BOARD_ROWS - 1;
+	filled_rows_indexes		   = sparse_set_new(BOARD_ROWS);
 
 	srand(time(NULL));
 	create_windows();
@@ -101,6 +106,8 @@ void screen_stage_dispose(void)
 	wclear(win_score);
 	wrefresh(win_score);
 	delwin(win_score);
+
+	sparse_set_dispose(&filled_rows_indexes);
 }
 
 bool screen_stage_is_completed(void)
@@ -114,6 +121,7 @@ void screen_stage_update(void)
 	handle_input();
 	move_shape();
 	handle_collision();
+	process_board_filled_rows();
 	update_score_labels();
 }
 
@@ -327,6 +335,7 @@ static void handle_collision(void)
 	if (y_collided && player_action != PLAYER_ACTION_MOVE_LEFT && player_action != PLAYER_ACTION_MOVE_RIGHT)
 	{
 		set_shape_on_board();
+		scan_board_filled_rows();
 		set_current_shape();
 		set_next_shape();
 	}
@@ -361,25 +370,44 @@ static void set_shape_on_board(void)
 	}
 }
 
-static void process_board_rows(void)
+static void scan_board_filled_rows(void)
 {
-	// 1st step: from back to front, identify completed row index and store
-	// them in an array.
+	uint8_t cells_filled_length;
+	filled_rows_elapsed_time = 0;
 
-	// for (uint8_t y = BOARD_ROWS - 1; y >= height; y--)
-	// {
-	// 	for (uint8_t x = 0; x < BOARD_COLS; x++)
-	// 	{
-	// 		color = board[BOARD_COLS * y + x];
+	for (uint8_t y = BOARD_ROWS - 1; y >= board_top_row_filled; y--)
+	{
+		cells_filled_length = 0;
 
-	// 		if (color)
-	// 		{
-	// 			wattron(win_board, COLOR_PAIR(color));
-	// 			mvwprintw(win_board, y + c_win_padding, (x * 2) + c_win_padding, "[]");
-	// 			wattroff(win_board, COLOR_PAIR(color));
-	// 		}
-	// 	}
-	// }
+		for (uint8_t x = 0; x < BOARD_COLS; x++)
+		{
+			cells_filled_length += board[BOARD_COLS * y + x] ? 1 : 0;
+		}
+
+		if (cells_filled_length == BOARD_COLS)
+		{
+			sparse_set_add(&filled_rows_indexes, y);
+		}
+	}
+}
+
+static void process_board_filled_rows(void)
+{
+	uint8_t length = VECTOR_LENGTH(filled_rows_indexes.dense);
+
+	if (length == 0)
+	{
+		return;
+	}
+
+	filled_rows_elapsed_time += g_delta_time;
+
+	if (filled_rows_elapsed_time < c_filled_rows_animation_lifetime)
+	{
+		return;
+	}
+
+	sparse_set_clear(&filled_rows_indexes);
 }
 
 static void set_next_shape(void)
@@ -548,10 +576,26 @@ static void render_board(void)
 		{
 			color = board[BOARD_COLS * y + x];
 
-			if (color)
+			if (!color)
+			{
+				continue;
+			}
+
+			bool filled_row = SPARSE_SET_CONTAINS(filled_rows_indexes, y);
+
+			if (filled_row)
+			{
+				color = COLOR_PAIR_WHITE_HIGH - ((uint8_t)((filled_rows_elapsed_time) * 10) % 3);
+				wattron(win_board, COLOR_PAIR(color));
+				mvwaddch(win_board, y + c_win_padding, (x * 2) + c_win_padding, CH_SHAPE_FILL);
+				mvwaddch(win_board, y + c_win_padding, (x * 2) + 1 + c_win_padding, CH_SHAPE_FILL);
+				wattroff(win_board, COLOR_PAIR(color));
+			}
+			else
 			{
 				wattron(win_board, COLOR_PAIR(color));
-				mvwprintw(win_board, y + c_win_padding, (x * 2) + c_win_padding, "[]");
+				mvwaddch(win_board, y + c_win_padding, (x * 2) + c_win_padding, '[');
+				mvwaddch(win_board, y + c_win_padding, (x * 2) + 1 + c_win_padding, ']');
 				wattroff(win_board, COLOR_PAIR(color));
 			}
 		}
