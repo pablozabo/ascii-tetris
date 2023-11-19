@@ -44,7 +44,7 @@ static float32_t current_shape_elapsed_time;
 static uint8_t	 player_action;
 static uint8_t	 level;
 static uint8_t	 velocity;
-static uint8_t	 board_height; // number of board rows with one or more filled cells
+static uint8_t	 board_top_row_filled;
 
 // INIT
 static void create_windows(void);
@@ -74,7 +74,7 @@ void screen_stage_init(void)
 	player_action			   = PLAYER_ACTION_IDLE;
 	level					   = 1;
 	current_shape_elapsed_time = 0;
-	board_height			   = 0;
+	board_top_row_filled	   = BOARD_ROWS - 1;
 
 	srand(time(NULL));
 	create_windows();
@@ -301,7 +301,7 @@ static void handle_collision(void)
 	bool	y_collided	   = shape_bottom_y > BOARD_ROWS;
 
 	// board blocks collision
-	if (!y_collided && shape_bottom_y > (BOARD_ROWS - board_height))
+	if (!y_collided && shape_bottom_y > board_top_row_filled)
 	{
 		for (uint8_t y = 0; y < current_shape.height && !y_collided; y++)
 		{
@@ -335,11 +335,11 @@ static void handle_collision(void)
 static void set_shape_on_board(void)
 {
 	uint8_t color  = c_shape_colors[current_shape.type];
-	uint8_t height = BOARD_ROWS - (current_shape.pos.y + current_shape.padding_top);
+	uint8_t height = current_shape.pos.y + current_shape.padding_top;
 
-	if (height > board_height)
+	if (height < board_top_row_filled)
 	{
-		board_height = height;
+		board_top_row_filled = height;
 	}
 
 	for (uint8_t y = 0; y < current_shape.height; y++)
@@ -540,10 +540,9 @@ static void render_shape(WINDOW *win, shape_t *shape)
 
 static void render_board(void)
 {
-	uint8_t height = BOARD_ROWS - board_height;
-	uint8_t color  = 0;
+	uint8_t color = 0;
 
-	for (uint8_t y = BOARD_ROWS - 1; y >= height; y--)
+	for (uint8_t y = BOARD_ROWS - 1; y >= board_top_row_filled; y--)
 	{
 		for (uint8_t x = 0; x < BOARD_COLS; x++)
 		{
