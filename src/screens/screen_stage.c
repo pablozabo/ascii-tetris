@@ -27,10 +27,10 @@ static const uint8_t c_win_next_shape_height = 11;
 static const uint8_t c_win_score_width		 = 20;
 static const uint8_t c_win_score_height		 = 11;
 
-static const uint8_t   c_win_padding					= 1;
-static const uint8_t   c_score_velocity					= 30;
-static const uint8_t   c_speedup_velocity				= 20;
-static const uint8_t   c_max_level						= 20;
+static const uint8_t c_win_padding = 1;
+// static const uint8_t   c_score_velocity					= 30;
+static const uint8_t c_speedup_velocity = 20;
+// static const uint8_t   c_max_level						= 20;
 static const float32_t c_shape_base_velocity			= 1; // 1 row per second
 static const float32_t c_filled_rows_animation_lifetime = 0.3;
 
@@ -38,7 +38,7 @@ static WINDOW *win_board;
 static WINDOW *win_next_shape;
 static WINDOW *win_score;
 
-static uint8_t		board[BOARD_ROWS * BOARD_COLS] = { 0 };
+static uint8_t		board[BOARD_ROWS * BOARD_COLS];
 static shape_t		next_shape;
 static shape_t		current_shape;
 static float32_t	current_shape_elapsed_time;
@@ -80,6 +80,7 @@ void screen_stage_init(void)
 	current_shape_elapsed_time = 0;
 	board_top_row_filled	   = BOARD_ROWS - 1;
 	filled_rows_indexes		   = sparse_set_new(BOARD_ROWS);
+	memset(board, 0, sizeof(uint8_t) * (BOARD_ROWS * BOARD_COLS));
 
 	srand(time(NULL));
 	create_windows();
@@ -112,7 +113,7 @@ void screen_stage_dispose(void)
 
 bool screen_stage_is_completed(void)
 {
-	return false;
+	return board_top_row_filled <= 0;
 }
 
 void screen_stage_update(void)
@@ -392,7 +393,7 @@ static void scan_board_filled_rows(void)
 	uint8_t cells_filled_length;
 	filled_rows_elapsed_time = 0;
 
-	for (uint8_t y = BOARD_ROWS - 1; y >= board_top_row_filled; y--)
+	for (int16_t y = BOARD_ROWS - 1; y >= board_top_row_filled; y--)
 	{
 		cells_filled_length = 0;
 
@@ -403,7 +404,7 @@ static void scan_board_filled_rows(void)
 
 		if (cells_filled_length == BOARD_COLS)
 		{
-			sparse_set_add(&filled_rows_indexes, y);
+			sparse_set_add(&filled_rows_indexes, (uint8_t)y);
 		}
 	}
 }
@@ -427,7 +428,7 @@ static void process_board_filled_rows(void)
 		return;
 	}
 
-	for (uint8_t y = BOARD_ROWS - 1; y >= board_top_row_filled; y--)
+	for (int16_t y = BOARD_ROWS - 1; y >= board_top_row_filled; y--)
 	{
 		bool row_to_remove = SPARSE_SET_CONTAINS(filled_rows_indexes, y);
 
@@ -624,7 +625,7 @@ static void render_board(void)
 {
 	uint8_t color = 0;
 
-	for (uint8_t y = BOARD_ROWS - 1; y >= board_top_row_filled; y--)
+	for (int16_t y = BOARD_ROWS - 1; y >= board_top_row_filled; y--)
 	{
 		for (uint8_t x = 0; x < BOARD_COLS; x++)
 		{

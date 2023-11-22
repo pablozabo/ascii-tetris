@@ -6,11 +6,11 @@ extern float32_t g_delta_time;
 extern char		*g_asset_game_over;
 extern score_t	 g_score;
 
-static const uint8_t  c_target_frame_time		   = 67;
+static const uint8_t  c_win_game_over_width		   = 51;
 static const uint8_t  c_win_game_over_height	   = 6;
-static const uint8_t  c_win_new_record_width	   = 67;
+static const uint8_t  c_win_new_record_width	   = 51;
 static const uint8_t  c_win_new_record_height	   = 3;
-static const uint8_t  c_win_play_again_width	   = 67;
+static const uint8_t  c_win_play_again_width	   = 51;
 static const uint8_t  c_win_play_again_height	   = 3;
 static const uint32_t c_record_points_acceleration = 1;
 
@@ -32,8 +32,8 @@ void screen_game_over_init(void)
 {
 	uint8_t offset_y, offset_x;
 
-	set_offset_yx(c_win_game_over_height + c_win_new_record_height + c_win_play_again_height, c_target_frame_time, &offset_y, &offset_x);
-	win_game_over = newwin(c_win_game_over_height, c_target_frame_time, offset_y, offset_x);
+	set_offset_yx(c_win_game_over_height + c_win_new_record_height + c_win_play_again_height, c_win_game_over_width, &offset_y, &offset_x);
+	win_game_over = newwin(c_win_game_over_height, c_win_game_over_width, offset_y, offset_x);
 	scrollok(win_game_over, TRUE);
 
 	win_new_record = newwin(c_win_new_record_height, c_win_new_record_width, offset_y + c_win_game_over_height, offset_x);
@@ -131,12 +131,10 @@ static void render_game_over(void)
 
 static void render_new_record(void)
 {
-	uint8_t offset_x;
-	char	record[30] = { '\0' };
+	char record[30] = { '\0' };
 	wclear(win_new_record);
 
 	sprintf(record, "New record! %d", record_points);
-	offset_x = (c_win_new_record_width - 12) * 0.5;
 
 	wrefresh(win_new_record);
 }
