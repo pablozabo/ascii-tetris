@@ -393,7 +393,10 @@ static void scan_board_filled_rows(void)
 
 static void process_board_filled_rows(void)
 {
-	uint8_t length = VECTOR_LENGTH(filled_rows_indexes.dense);
+	uint8_t length		   = VECTOR_LENGTH(filled_rows_indexes.dense);
+	uint8_t rows_to_move   = 0;
+	uint8_t rows_to_remove = 0;
+	size_t	size		   = 0;
 
 	if (length == 0)
 	{
@@ -407,7 +410,36 @@ static void process_board_filled_rows(void)
 		return;
 	}
 
+	for (uint8_t y = BOARD_ROWS - 1; y >= board_top_row_filled; y--)
+	{
+		bool row_to_remove = SPARSE_SET_CONTAINS(filled_rows_indexes, y);
+
+		if (!row_to_remove && rows_to_remove > 0)
+		{
+			rows_to_move++;
+		}
+
+		if (row_to_remove || y == board_top_row_filled)
+		{
+			if (rows_to_move > 0)
+			{
+				size			= sizeof(uint8_t) * rows_to_move * BOARD_COLS;
+				uint8_t *dest	= (board + ((y + rows_to_remove) * BOARD_COLS));
+				uint8_t *source = (board + (y * BOARD_COLS));
+				memmove(dest, source, size);
+
+				rows_to_move = 0;
+			}
+
+			rows_to_remove++;
+		}
+	}
+
 	sparse_set_clear(&filled_rows_indexes);
+	rows_to_remove--;
+	size = sizeof(uint8_t) * rows_to_remove * BOARD_COLS;
+	memset(board + board_top_row_filled, 0, size);
+	board_top_row_filled -= rows_to_remove;
 }
 
 static void set_next_shape(void)
