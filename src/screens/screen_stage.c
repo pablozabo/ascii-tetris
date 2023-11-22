@@ -361,7 +361,7 @@ static void handle_collision(void)
 static void set_shape_on_board(void)
 {
 	uint8_t color  = c_shape_colors[current_shape.type];
-	uint8_t height = current_shape.pos.y + current_shape.padding_top;
+	uint8_t height = current_shape.pos.y;
 
 	if (height < board_top_row_filled)
 	{
@@ -453,15 +453,20 @@ static void process_board_filled_rows(void)
 	}
 
 	sparse_set_clear(&filled_rows_indexes);
-	rows_to_remove--;
+
+	if ((BOARD_ROWS - board_top_row_filled) > rows_to_remove)
+	{
+		rows_to_remove--;
+	}
+
 	size = sizeof(uint8_t) * rows_to_remove * BOARD_COLS;
-	memset(board + board_top_row_filled, 0, size);
-	board_top_row_filled -= rows_to_remove;
+	memset(board + (board_top_row_filled * BOARD_COLS), 0, size);
+	board_top_row_filled += rows_to_remove;
 }
 
 static void set_next_shape(void)
 {
-	next_shape.type = SHAPE_TYPE_I; // rand() % SHAPES_COUNT;
+	next_shape.type = rand() % SHAPES_COUNT;
 	memcpy(next_shape.val, c_shape_list[next_shape.type], SHAPE_ROWS * SHAPE_COLS);
 	set_shape_padding(&next_shape);
 
