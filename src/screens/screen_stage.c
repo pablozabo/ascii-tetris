@@ -54,7 +54,7 @@ static void create_windows(void);
 // UPDATE
 static void handle_input(void);
 static void move_shape(void);
-static void rotate_shape(void);
+static void rotate_shape(bool backward);
 static void set_shape_padding(shape_t *shape);
 static void drop_shape(void);
 static void handle_collision(void);
@@ -199,7 +199,7 @@ static void move_shape(void)
 	}
 	else if (player_action == PLAYER_ACTION_ROTATE)
 	{
-		rotate_shape();
+		rotate_shape(false);
 	}
 	else if (player_action == PLAYER_ACTION_SPEEDUP)
 	{
@@ -217,17 +217,27 @@ static void move_shape(void)
 	}
 }
 
-static void rotate_shape(void)
+static void rotate_shape(bool backward)
 {
 	bool shape_aux[SHAPE_ROWS * SHAPE_COLS];
+	bool val;
 
 	for (uint8_t y = 0; y < SHAPE_ROWS; y++)
 	{
 		for (uint8_t x = 0; x < SHAPE_COLS; x++)
 		{
-			bool fill = current_shape.val[(SHAPE_COLS * (SHAPE_ROWS - x - 1)) + y];
+			if (backward)
+			{
+				val = current_shape.val[SHAPE_COLS * y + x];
 
-			shape_aux[SHAPE_COLS * y + x] = fill;
+				shape_aux[(SHAPE_COLS * (SHAPE_ROWS - x - 1)) + y] = val;
+			}
+			else
+			{
+				val = current_shape.val[(SHAPE_COLS * (SHAPE_ROWS - x - 1)) + y];
+
+				shape_aux[SHAPE_COLS * y + x] = val;
+			}
 		}
 	}
 
@@ -328,16 +338,23 @@ static void handle_collision(void)
 
 	if (y_collided)
 	{
-		current_shape.pos.x = current_shape.prev_pos.x;
-		current_shape.pos.y = current_shape.prev_pos.y;
-	}
+		if (player_action == PLAYER_ACTION_ROTATE)
+		{
+			rotate_shape(true);
+		}
+		else
+		{
+			current_shape.pos.x = current_shape.prev_pos.x;
+			current_shape.pos.y = current_shape.prev_pos.y;
+		}
 
-	if (y_collided && player_action != PLAYER_ACTION_MOVE_LEFT && player_action != PLAYER_ACTION_MOVE_RIGHT)
-	{
-		set_shape_on_board();
-		scan_board_filled_rows();
-		set_current_shape();
-		set_next_shape();
+		if (player_action != PLAYER_ACTION_MOVE_LEFT && player_action != PLAYER_ACTION_MOVE_RIGHT && player_action != PLAYER_ACTION_ROTATE)
+		{
+			set_shape_on_board();
+			scan_board_filled_rows();
+			set_current_shape();
+			set_next_shape();
+		}
 	}
 }
 
@@ -444,7 +461,7 @@ static void process_board_filled_rows(void)
 
 static void set_next_shape(void)
 {
-	next_shape.type = rand() % SHAPES_COUNT;
+	next_shape.type = SHAPE_TYPE_I; // rand() % SHAPES_COUNT;
 	memcpy(next_shape.val, c_shape_list[next_shape.type], SHAPE_ROWS * SHAPE_COLS);
 	set_shape_padding(&next_shape);
 
