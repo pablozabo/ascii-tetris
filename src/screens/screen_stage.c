@@ -27,10 +27,10 @@ static const uint8_t c_win_next_shape_height = 11;
 static const uint8_t c_win_score_width		 = 20;
 static const uint8_t c_win_score_height		 = 11;
 
-static const uint8_t c_win_padding = 1;
-// static const uint8_t   c_score_velocity					= 30;
-static const uint8_t c_speedup_velocity = 20;
-// static const uint8_t   c_max_level						= 20;
+static const uint8_t   c_win_padding					= 1;
+static const uint8_t   c_score_velocity					= 30;
+static const uint8_t   c_speedup_velocity				= 20;
+static const uint8_t   c_max_level						= 20;
 static const float32_t c_shape_base_velocity			= 1; // 1 row per second
 static const float32_t c_filled_rows_animation_lifetime = 0.3;
 static const float32_t c_game_over_filled_rows_velocity = 0.05;
@@ -78,7 +78,10 @@ static void render_board(void);
 
 void screen_stage_init(void)
 {
-	g_score.record_label			   = g_score.record;
+	g_score.current		  = 0;
+	g_score.current_label = 0;
+	g_score.record_label  = g_score.record;
+
 	player_action					   = PLAYER_ACTION_IDLE;
 	level							   = 1;
 	current_shape_elapsed_time		   = 0;
@@ -419,6 +422,12 @@ static void scan_board_filled_rows(void)
 		if (cells_filled_length == BOARD_COLS)
 		{
 			sparse_set_add(&filled_rows_indexes, (uint8_t)y);
+			g_score.current++;
+		}
+
+		if (g_score.current > g_score.record)
+		{
+			g_score.record++;
 		}
 	}
 }
@@ -529,25 +538,25 @@ static void save_score(void)
 
 static void update_score_labels(void)
 {
-	// if (g_score.current_stage_label < g_score.current_stage)
-	// {
-	// 	g_score.current_stage_label += c_score_velocity * g_delta_time;
+	if (g_score.current_label < g_score.current)
+	{
+		g_score.current_label += c_score_velocity * g_delta_time;
 
-	// 	if (g_score.current_stage_label > g_score.current_stage)
-	// 	{
-	// 		g_score.current_stage_label = g_score.current_stage;
-	// 	}
-	// }
+		if (g_score.current_label > g_score.current)
+		{
+			g_score.current_label = g_score.current;
+		}
+	}
 
-	// if (g_score.record_label < g_score.record)
-	// {
-	// 	g_score.record_label += c_score_velocity * g_delta_time;
+	if (g_score.record_label < g_score.record)
+	{
+		g_score.record_label += c_score_velocity * g_delta_time;
 
-	// 	if (g_score.record_label > g_score.record)
-	// 	{
-	// 		g_score.record_label = g_score.record;
-	// 	}
-	// }
+		if (g_score.record_label > g_score.record)
+		{
+			g_score.record_label = g_score.record;
+		}
+	}
 }
 
 // RENDER

@@ -127,11 +127,11 @@ typedef enum custom_color_t
 	CUSTOM_COLOR_WHITE_HIGH	   = 47
 } custom_color_t;
 
-
 typedef struct score_t
 {
 	uint16_t current;
 	uint16_t record;
+	// next members are used to show animated score on screen
 	uint16_t current_label;
 	uint16_t record_label;
 } score_t;
