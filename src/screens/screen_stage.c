@@ -33,6 +33,7 @@ static const uint8_t   c_speedup_velocity				= 20;
 static const uint8_t   c_max_level						= 10;
 static const float32_t c_shape_base_velocity			= 1; // 1 row per second
 static const float32_t c_filled_rows_animation_lifetime = 0.3;
+static const float32_t c_prev_shape_animation_lifetime	= 0.3;
 static const float32_t c_game_over_filled_rows_velocity = 0.05;
 
 static WINDOW *win_board;
@@ -42,6 +43,7 @@ static WINDOW *win_score;
 static uint8_t		board[BOARD_ROWS * BOARD_COLS];
 static shape_t		next_shape;
 static shape_t		current_shape;
+static shape_t		prev_shape;
 static float32_t	current_shape_elapsed_time;
 static uint8_t		player_action;
 static uint8_t		level;
@@ -49,6 +51,7 @@ static uint8_t		velocity;
 static uint8_t		board_top_row_filled;
 static sparse_set_t filled_rows_indexes;
 static float32_t	filled_rows_elapsed_time;
+static float32_t	prev_shape_elapsed_time;
 static uint8_t		game_over_filled_rows;
 static float32_t	game_over_filled_rows_elapsed_time;
 
@@ -65,6 +68,8 @@ static void set_shape_on_board(void);
 static void scan_board_filled_rows(void);
 static void process_board_filled_rows(void);
 static void process_game_over_filled_rows(void);
+static void process_prev_shape_animation(void);
+static void set_prev_shape(void);
 static void set_next_shape(void);
 static void set_current_shape(void);
 static void save_score(void);
@@ -135,6 +140,7 @@ void screen_stage_update(void)
 		move_shape();
 		handle_collision();
 		process_board_filled_rows();
+		process_prev_shape_animation();
 		update_score_labels();
 	}
 	else
@@ -373,6 +379,7 @@ static void handle_collision(void)
 		{
 			set_shape_on_board();
 			scan_board_filled_rows();
+			set_prev_shape();
 			set_current_shape();
 			set_next_shape();
 		}
@@ -506,6 +513,22 @@ static void process_game_over_filled_rows(void)
 	}
 }
 
+static void process_prev_shape_animation(void)
+{
+	if (prev_shape.width == 0)
+	{
+		return;
+	}
+
+	prev_shape_elapsed_time += g_delta_time;
+
+	if (prev_shape_elapsed_time >= c_prev_shape_animation_lifetime)
+	{
+		prev_shape.width  = 0;
+		prev_shape.height = 0;
+	}
+}
+
 static void set_next_shape(void)
 {
 	next_shape.type = rand() % SHAPES_COUNT;
@@ -517,6 +540,24 @@ static void set_next_shape(void)
 
 	next_shape.pos.x = (BOARD_COLS - (c_win_padding * 2)) * 0.5 - next_shape.width * 0.5 + next_shape.padding_left;
 	next_shape.pos.y = c_win_next_shape_height * 0.5 - next_shape.height * 0.5 - next_shape.padding_top - c_win_padding;
+}
+
+static void set_prev_shape(void)
+{
+	uint8_t size = c_shape_size[current_shape.type];
+
+	prev_shape.type			  = current_shape.type;
+	prev_shape.pos			  = current_shape.pos;
+	prev_shape.width		  = current_shape.width;
+	prev_shape.height		  = current_shape.height;
+	prev_shape.padding_left	  = current_shape.padding_left;
+	prev_shape.padding_right  = current_shape.padding_right;
+	prev_shape.padding_top	  = current_shape.padding_top;
+	prev_shape.padding_bottom = current_shape.padding_bottom;
+
+	memset(prev_shape.val, 0, sizeof(uint8_t) * (SHAPE_MAX_SIZE * SHAPE_MAX_SIZE));
+	memcpy(prev_shape.val, current_shape.val, size * size);
+	prev_shape_elapsed_time = 0;
 }
 
 static void set_current_shape(void)
@@ -669,7 +710,8 @@ static void render_shape(WINDOW *win, shape_t *shape)
 
 static void render_board(void)
 {
-	uint8_t color = 0;
+	uint8_t color			= 0;
+	uint8_t prev_shape_size = c_shape_size[prev_shape.type];
 
 	for (int16_t y = BOARD_ROWS - 1; y >= board_top_row_filled; y--)
 	{
@@ -697,6 +739,20 @@ static void render_board(void)
 				if (filled_row)
 				{
 					color = COLOR_PAIR_WHITE_HIGH - ((uint8_t)((filled_rows_elapsed_time) * 10) % 3);
+					wattron(win_board, COLOR_PAIR(color));
+					mvwaddch(win_board, y + c_win_padding, (x * 2) + c_win_padding, CH_SHAPE_FILL);
+					mvwaddch(win_board, y + c_win_padding, (x * 2) + 1 + c_win_padding, CH_SHAPE_FILL);
+					wattroff(win_board, COLOR_PAIR(color));
+				}
+				// highlight animation for last shape
+				else if (prev_shape.width > 0 &&
+						 (x >= (prev_shape.pos.x + prev_shape.padding_left)) &&
+						 (x < (prev_shape.pos.x + prev_shape.padding_left + prev_shape.width)) &&
+						 (y >= (prev_shape.pos.y + prev_shape.padding_top)) &&
+						 (y < (prev_shape.pos.y + prev_shape.padding_top + prev_shape.height)) &&
+						 prev_shape.val[prev_shape_size * (uint8_t)(y - prev_shape.pos.y) + (uint8_t)(x - prev_shape.pos.x)])
+				{
+					color = (color * 10) + ((uint8_t)((prev_shape_elapsed_time) * 10) % 3);
 					wattron(win_board, COLOR_PAIR(color));
 					mvwaddch(win_board, y + c_win_padding, (x * 2) + c_win_padding, CH_SHAPE_FILL);
 					mvwaddch(win_board, y + c_win_padding, (x * 2) + 1 + c_win_padding, CH_SHAPE_FILL);
