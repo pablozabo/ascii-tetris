@@ -74,10 +74,10 @@ static void init(void)
 	init_color(CUSTOM_COLOR_RED_MEDIUM, 500, 0, 0);
 	init_color(CUSTOM_COLOR_RED_HIGH, 1000, 0, 0);
 
-	init_color(CUSTOM_COLOR_BLUE_DEFAULT, 0, 0, 900);
-	init_color(CUSTOM_COLOR_BLUE_LOW, 0, 0, 300);
-	init_color(CUSTOM_COLOR_BLUE_MEDIUM, 0, 0, 500);
-	init_color(CUSTOM_COLOR_BLUE_HIGH, 0, 0, 1000);
+	init_color(CUSTOM_COLOR_BLUE_DEFAULT, 0, 250, 900);
+	init_color(CUSTOM_COLOR_BLUE_LOW, 0, 150, 300);
+	init_color(CUSTOM_COLOR_BLUE_MEDIUM, 0, 250, 500);
+	init_color(CUSTOM_COLOR_BLUE_HIGH, 0, 300, 1000);
 
 	init_color(CUSTOM_COLOR_GREEN_DEFAULT, 0, 900, 0);
 	init_color(CUSTOM_COLOR_GREEN_LOW, 0, 300, 0);

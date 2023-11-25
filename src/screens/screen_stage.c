@@ -237,45 +237,47 @@ static void move_shape(void)
 
 static void rotate_shape(bool backward)
 {
-	bool shape_aux[SHAPE_ROWS * SHAPE_COLS];
-	bool val;
+	uint8_t shape_size = c_shape_size[current_shape.type];
+	bool	shape_aux[SHAPE_MAX_SIZE * SHAPE_MAX_SIZE];
+	bool	val;
 
-	for (uint8_t y = 0; y < SHAPE_ROWS; y++)
+	for (uint8_t y = 0; y < shape_size; y++)
 	{
-		for (uint8_t x = 0; x < SHAPE_COLS; x++)
+		for (uint8_t x = 0; x < shape_size; x++)
 		{
 			if (backward)
 			{
-				val = current_shape.val[SHAPE_COLS * y + x];
+				val = current_shape.val[shape_size * y + x];
 
-				shape_aux[(SHAPE_COLS * (SHAPE_ROWS - x - 1)) + y] = val;
+				shape_aux[(shape_size * (shape_size - x - 1)) + y] = val;
 			}
 			else
 			{
-				val = current_shape.val[(SHAPE_COLS * (SHAPE_ROWS - x - 1)) + y];
+				val = current_shape.val[(shape_size * (shape_size - x - 1)) + y];
 
-				shape_aux[SHAPE_COLS * y + x] = val;
+				shape_aux[shape_size * y + x] = val;
 			}
 		}
 	}
 
-	memcpy(current_shape.val, shape_aux, SHAPE_ROWS * SHAPE_COLS);
+	memcpy(current_shape.val, shape_aux, shape_size * shape_size);
 	set_shape_padding(&current_shape);
 }
 
 static void set_shape_padding(shape_t *shape)
 {
-	int8_t padding_left	  = -1;
-	int8_t padding_right  = -1;
-	int8_t padding_top	  = -1;
-	int8_t padding_bottom = -1;
+	int8_t	padding_left   = -1;
+	int8_t	padding_right  = -1;
+	int8_t	padding_top	   = -1;
+	int8_t	padding_bottom = -1;
+	uint8_t shape_size	   = c_shape_size[shape->type];
 
-	for (uint8_t y = 0; y < SHAPE_ROWS; y++)
+	for (uint8_t y = 0; y < shape_size; y++)
 	{
-		for (uint8_t x = 0; x < SHAPE_COLS; x++)
+		for (uint8_t x = 0; x < shape_size; x++)
 		{
 			// left
-			bool fill = shape->val[SHAPE_COLS * y + x];
+			bool fill = shape->val[shape_size * y + x];
 
 			if ((padding_left == -1 || x < padding_left) && fill)
 			{
@@ -283,7 +285,7 @@ static void set_shape_padding(shape_t *shape)
 			}
 
 			// right
-			fill = shape->val[SHAPE_COLS * y + (SHAPE_COLS - x - 1)];
+			fill = shape->val[shape_size * y + (shape_size - x - 1)];
 
 			if ((padding_right == -1 || x < padding_right) && fill)
 			{
@@ -291,7 +293,7 @@ static void set_shape_padding(shape_t *shape)
 			}
 
 			// top
-			fill = shape->val[SHAPE_COLS * x + y];
+			fill = shape->val[shape_size * x + y];
 
 			if ((padding_top == -1 || x < padding_top) && fill)
 			{
@@ -299,7 +301,7 @@ static void set_shape_padding(shape_t *shape)
 			}
 
 			// bottom
-			fill = shape->val[(SHAPE_COLS * (SHAPE_ROWS - x - 1)) + y];
+			fill = shape->val[(shape_size * (shape_size - x - 1)) + y];
 
 			if ((padding_bottom == -1 || x < padding_bottom) && fill)
 			{
@@ -312,8 +314,8 @@ static void set_shape_padding(shape_t *shape)
 	shape->padding_right  = padding_right;
 	shape->padding_top	  = padding_top;
 	shape->padding_bottom = padding_bottom;
-	shape->width		  = SHAPE_COLS - padding_left - padding_right;
-	shape->height		  = SHAPE_ROWS - padding_top - padding_bottom;
+	shape->width		  = shape_size - padding_left - padding_right;
+	shape->height		  = shape_size - padding_top - padding_bottom;
 }
 
 static void drop_shape(void)
@@ -335,6 +337,7 @@ static void handle_collision(void)
 	// bottom board collision
 	uint8_t shape_bottom_y = current_shape.pos.y + current_shape.padding_top + current_shape.height;
 	bool	y_collided	   = shape_bottom_y > BOARD_ROWS;
+	uint8_t shape_size	   = c_shape_size[current_shape.type];
 
 	// board blocks collision
 	if (!y_collided && shape_bottom_y > board_top_row_filled)
@@ -343,7 +346,7 @@ static void handle_collision(void)
 		{
 			for (uint8_t x = 0; x < current_shape.width && !y_collided; x++)
 			{
-				bool	 fill = current_shape.val[SHAPE_COLS * (y + current_shape.padding_top) + (x + current_shape.padding_left)];
+				bool	 fill = current_shape.val[shape_size * (y + current_shape.padding_top) + (x + current_shape.padding_left)];
 				uint16_t index =
 					(BOARD_COLS *
 						 (uint16_t)(current_shape.pos.y + current_shape.padding_top + y) +
@@ -378,8 +381,9 @@ static void handle_collision(void)
 
 static void set_shape_on_board(void)
 {
-	uint8_t color  = c_shape_colors[current_shape.type];
-	uint8_t height = current_shape.pos.y;
+	uint8_t color	   = c_shape_colors[current_shape.type];
+	uint8_t shape_size = c_shape_size[current_shape.type];
+	uint8_t height	   = current_shape.pos.y;
 
 	if (height < board_top_row_filled)
 	{
@@ -390,7 +394,7 @@ static void set_shape_on_board(void)
 	{
 		for (uint8_t x = 0; x < current_shape.width; x++)
 		{
-			bool fill = current_shape.val[SHAPE_COLS * (y + current_shape.padding_top) + (x + current_shape.padding_left)];
+			bool fill = current_shape.val[shape_size * (y + current_shape.padding_top) + (x + current_shape.padding_left)];
 
 			if (fill)
 			{
@@ -502,7 +506,10 @@ static void process_game_over_filled_rows(void)
 static void set_next_shape(void)
 {
 	next_shape.type = rand() % SHAPES_COUNT;
-	memcpy(next_shape.val, c_shape_list[next_shape.type], SHAPE_ROWS * SHAPE_COLS);
+	uint8_t size	= c_shape_size[next_shape.type];
+
+	memset(next_shape.val, 0, sizeof(uint8_t) * (SHAPE_MAX_SIZE * SHAPE_MAX_SIZE));
+	memcpy(next_shape.val, c_shape_list[next_shape.type], size * size);
 	set_shape_padding(&next_shape);
 
 	next_shape.pos.x = (BOARD_COLS - (c_win_padding * 2)) * 0.5 - next_shape.width * 0.5 + next_shape.padding_left;
@@ -511,12 +518,14 @@ static void set_next_shape(void)
 
 static void set_current_shape(void)
 {
+	uint8_t size = c_shape_size[next_shape.type];
+
 	current_shape.type = next_shape.type;
-	memcpy(current_shape.val, c_shape_list[current_shape.type], SHAPE_ROWS * SHAPE_COLS);
+	memset(current_shape.val, 0, sizeof(uint8_t) * (SHAPE_MAX_SIZE * SHAPE_MAX_SIZE));
+	memcpy(current_shape.val, c_shape_list[current_shape.type], size * size);
 	set_shape_padding(&current_shape);
 
 	current_shape.pos.x = floor(BOARD_COLS * 0.5 - current_shape.width * 0.5 + current_shape.padding_left);
-	// current_shape.pos.x -= (uint8_t)current_shape.pos.x % 2;
 	current_shape.pos.y = 0;
 }
 
@@ -635,15 +644,16 @@ static void render_win_score()
 
 static void render_shape(WINDOW *win, shape_t *shape)
 {
-	uint8_t color = c_shape_colors[shape->type];
+	uint8_t color	   = c_shape_colors[shape->type];
+	uint8_t shape_size = c_shape_size[shape->type];
 
 	wattron(win, COLOR_PAIR(color));
 
-	for (uint8_t y = 0; y < SHAPE_ROWS; y++)
+	for (uint8_t y = 0; y < shape_size; y++)
 	{
-		for (uint8_t x = 0; x < SHAPE_COLS; x++)
+		for (uint8_t x = 0; x < shape_size; x++)
 		{
-			bool fill = shape->val[SHAPE_COLS * y + x];
+			bool fill = shape->val[shape_size * y + x];
 
 			if (fill)
 			{
