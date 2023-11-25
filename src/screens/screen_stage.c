@@ -436,14 +436,16 @@ static void scan_board_filled_rows(void)
 	}
 }
 
+// there's a bug in this method. For some reason,
+// there are occasions when more rows than expected are removed
 static void process_board_filled_rows(void)
 {
-	uint8_t length		   = VECTOR_LENGTH(filled_rows_indexes.dense);
-	uint8_t rows_to_move   = 0;
-	uint8_t rows_to_remove = 0;
-	size_t	size		   = 0;
+	uint8_t filled_rows_length = VECTOR_LENGTH(filled_rows_indexes.dense);
+	uint8_t rows_to_move	   = 0;
+	uint8_t rows_to_remove	   = 0;
+	size_t	size			   = 0;
 
-	if (length == 0)
+	if (filled_rows_length == 0)
 	{
 		return;
 	}
@@ -482,14 +484,9 @@ static void process_board_filled_rows(void)
 
 	sparse_set_clear(&filled_rows_indexes);
 
-	if ((BOARD_ROWS - board_top_row_filled) > rows_to_remove)
-	{
-		rows_to_remove--;
-	}
-
-	size = sizeof(uint8_t) * rows_to_remove * BOARD_COLS;
+	size = sizeof(uint8_t) * filled_rows_length * BOARD_COLS;
 	memset(board + (board_top_row_filled * BOARD_COLS), 0, size);
-	board_top_row_filled += rows_to_remove;
+	board_top_row_filled += filled_rows_length;
 }
 
 static void process_game_over_filled_rows(void)
@@ -531,7 +528,7 @@ static void set_current_shape(void)
 
 static void save_score(void)
 {
-	if (g_score.current <= g_score.record)
+	if (g_score.current < g_score.record)
 	{
 		return;
 	}
