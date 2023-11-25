@@ -30,7 +30,7 @@ static const uint8_t c_win_score_height		 = 11;
 static const uint8_t   c_win_padding					= 1;
 static const uint8_t   c_score_velocity					= 30;
 static const uint8_t   c_speedup_velocity				= 20;
-static const uint8_t   c_max_level						= 20;
+static const uint8_t   c_max_level						= 10;
 static const float32_t c_shape_base_velocity			= 1; // 1 row per second
 static const float32_t c_filled_rows_animation_lifetime = 0.3;
 static const float32_t c_game_over_filled_rows_velocity = 0.05;
@@ -228,7 +228,7 @@ static void move_shape(void)
 	{
 		drop_shape();
 	}
-	else if (current_shape_elapsed_time >= (c_shape_base_velocity - (velocity * 0.05)))
+	else if (current_shape_elapsed_time >= (c_shape_base_velocity - (velocity * 0.1)))
 	{
 		current_shape_elapsed_time = 0;
 		current_shape.pos.y += 1;
@@ -426,12 +426,6 @@ static void scan_board_filled_rows(void)
 		if (cells_filled_length == BOARD_COLS)
 		{
 			sparse_set_add(&filled_rows_indexes, (uint8_t)y);
-			g_score.current++;
-		}
-
-		if (g_score.current > g_score.record)
-		{
-			g_score.record++;
 		}
 	}
 }
@@ -487,6 +481,18 @@ static void process_board_filled_rows(void)
 	size = sizeof(uint8_t) * filled_rows_length * BOARD_COLS;
 	memset(board + (board_top_row_filled * BOARD_COLS), 0, size);
 	board_top_row_filled += filled_rows_length;
+
+	g_score.current += filled_rows_length;
+
+	if (g_score.current > g_score.record)
+	{
+		g_score.record += filled_rows_length;
+	}
+
+	if (level < c_max_level)
+	{
+		level = (uint8_t)ceil((float32_t)g_score.current / 10);
+	}
 }
 
 static void process_game_over_filled_rows(void)
@@ -576,15 +582,14 @@ static void render_win_board(void)
 static void render_win_next_shape()
 {
 	wclear(win_next_shape);
-	char		level[3]	= { '\0' };
-	const char *title		= "NEXT";
-	const char *lines_label = "Level:";
+	char		level_count[3] = { '\0' };
+	const char *title		   = "NEXT";
+	const char *lines_label	   = "Level:";
 
 	uint8_t padding_x = c_win_padding * 2,
 			padding_y = c_win_next_shape_height - 2;
-	uint8_t l		  = 0;
 
-	sprintf(level, "%d", l);
+	sprintf(level_count, "%d", level);
 
 	wattron(win_next_shape, COLOR_PAIR(COLOR_PAIR_MAGENTA_MEDIUM));
 	box(win_next_shape, 0, 0);
@@ -597,7 +602,7 @@ static void render_win_next_shape()
 	// level
 	wattron(win_next_shape, COLOR_PAIR(COLOR_PAIR_GREEN_DEFAULT));
 	mvwprintw(win_next_shape, padding_y, padding_x, "%s", lines_label);
-	mvwprintw(win_next_shape, padding_y, strlen(lines_label) + padding_x + 1, "%s", level);
+	mvwprintw(win_next_shape, padding_y, strlen(lines_label) + padding_x + 1, "%s", level_count);
 	wattroff(win_next_shape, COLOR_PAIR(COLOR_PAIR_GREEN_DEFAULT));
 	// shape
 	render_shape(win_next_shape, &next_shape);
