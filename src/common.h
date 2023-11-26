@@ -4,8 +4,6 @@
 #include "defs.h"
 
 #define ASSERT(exp) ((exp) ? 1 : error_handler(__FILE__, __FUNCTION__, __LINE__, #exp))
-#define MIN(val1, val2) (val1 >= val2 ? val2 : val1)
-#define MAX(val1, val2) (val1 >= val2 ? val1 : val2)
 
 void error_handler(const char *file, const char *function, int line, const char *exp);
 

@@ -2,7 +2,6 @@
 #define SHAPES_H
 
 #include "defs.h"
-#include "vec2.h"
 
 #define SHAPES_COUNT 7
 #define SHAPE_MAX_SIZE 4
