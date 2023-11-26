@@ -1,4 +1,3 @@
-vpath %.h include
 vpath %.h src/screens
 vpath %.h src/data_structures
 vpath %.c src/screens
