@@ -283,33 +283,33 @@ static void set_shape_padding(shape_t *shape)
 		for (uint8_t x = 0; x < shape_size; x++)
 		{
 			// left
-			bool fill = shape->val[shape_size * y + x];
+			bool filled = shape->val[shape_size * y + x];
 
-			if ((padding_left == -1 || x < padding_left) && fill)
+			if ((padding_left == -1 || x < padding_left) && filled)
 			{
 				padding_left = x;
 			}
 
 			// right
-			fill = shape->val[shape_size * y + (shape_size - x - 1)];
+			filled = shape->val[shape_size * y + (shape_size - x - 1)];
 
-			if ((padding_right == -1 || x < padding_right) && fill)
+			if ((padding_right == -1 || x < padding_right) && filled)
 			{
 				padding_right = x;
 			}
 
 			// top
-			fill = shape->val[shape_size * x + y];
+			filled = shape->val[shape_size * x + y];
 
-			if ((padding_top == -1 || x < padding_top) && fill)
+			if ((padding_top == -1 || x < padding_top) && filled)
 			{
 				padding_top = x;
 			}
 
 			// bottom
-			fill = shape->val[(shape_size * (shape_size - x - 1)) + y];
+			filled = shape->val[(shape_size * (shape_size - x - 1)) + y];
 
-			if ((padding_bottom == -1 || x < padding_bottom) && fill)
+			if ((padding_bottom == -1 || x < padding_bottom) && filled)
 			{
 				padding_bottom = x;
 			}
@@ -326,6 +326,33 @@ static void set_shape_padding(shape_t *shape)
 
 static void drop_shape(void)
 {
+	uint8_t board_floor	 = BOARD_ROWS;
+	uint8_t shape_left_x = current_shape.pos.x + current_shape.padding_left;
+	uint8_t shape_size	 = c_shape_size[current_shape.type];
+	bool	collided	 = false;
+
+	for (int16_t y = current_shape.pos.y; y <= board_floor && !collided; y++)
+	{
+		for (uint8_t y_shape = 0; y_shape < current_shape.height && !collided; y_shape++)
+		{
+			for (uint8_t x_shape = 0; x_shape < current_shape.width && !collided; x_shape++)
+			{
+				bool shape_filled = current_shape.val[shape_size * (y_shape + current_shape.padding_top) + (x_shape + current_shape.padding_left)];
+				bool board_filled = board[BOARD_COLS * (y + y_shape + current_shape.padding_top) + (shape_left_x + x_shape)] > 0;
+				collided		  = (shape_filled && board_filled) || (y + current_shape.padding_top + current_shape.height) > board_floor;
+
+				if (collided)
+				{
+					current_shape.pos.y = y - 1;
+					set_shape_on_board();
+					scan_board_filled_rows();
+					set_prev_shape();
+					set_current_shape();
+					set_next_shape();
+				}
+			}
+		}
+	}
 }
 
 static void handle_collision(void)
@@ -352,13 +379,13 @@ static void handle_collision(void)
 		{
 			for (uint8_t x = 0; x < current_shape.width && !y_collided; x++)
 			{
-				bool	 fill = current_shape.val[shape_size * (y + current_shape.padding_top) + (x + current_shape.padding_left)];
+				bool	 filled = current_shape.val[shape_size * (y + current_shape.padding_top) + (x + current_shape.padding_left)];
 				uint16_t index =
 					(BOARD_COLS *
 						 (uint16_t)(current_shape.pos.y + current_shape.padding_top + y) +
 					 (uint16_t)(current_shape.pos.x + current_shape.padding_left + x));
 
-				y_collided = fill && board[index] > 0;
+				y_collided = filled && board[index] > 0;
 			}
 		}
 	}
@@ -401,9 +428,9 @@ static void set_shape_on_board(void)
 	{
 		for (uint8_t x = 0; x < current_shape.width; x++)
 		{
-			bool fill = current_shape.val[shape_size * (y + current_shape.padding_top) + (x + current_shape.padding_left)];
+			bool filled = current_shape.val[shape_size * (y + current_shape.padding_top) + (x + current_shape.padding_left)];
 
-			if (fill)
+			if (filled)
 			{
 				uint16_t index =
 					BOARD_COLS *
@@ -696,9 +723,9 @@ static void render_shape(WINDOW *win, shape_t *shape)
 	{
 		for (uint8_t x = 0; x < shape_size; x++)
 		{
-			bool fill = shape->val[shape_size * y + x];
+			bool filled = shape->val[shape_size * y + x];
 
-			if (fill)
+			if (filled)
 			{
 				mvwprintw(win, shape->pos.y + y + c_win_padding, (shape->pos.x * 2) + (x * 2) + c_win_padding, "[]");
 			}
