@@ -30,10 +30,18 @@ typedef bool (*screen_is_completed_t)(void);
 #define CH_EOL '\n'
 #define CH_EOS '\0'
 #define CH_ENTER 10
-#define CH_ESC 27
-#define CH_SPACE 32
 #define CH_CIRCLE 'O'
 #define CH_DOT '.'
+#define CH_ESC 27
+#define CH_SPACE 32
+#define CH_LEFT KEY_LEFT
+#define CH_RIGHT KEY_RIGHT
+#define CH_UP KEY_UP
+#define CH_DOWN KEY_DOWN
+#define CH_PAUSE_L 'p'
+#define CH_PAUSE_U 'P'
+#define CH_SHAPE_SHADOW_L 's'
+#define CH_SHAPE_SHADOW_U 'S'
 
 #define FILE_SCORE "score.txt"
 

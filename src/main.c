@@ -239,7 +239,7 @@ static void update_state(void)
 		screen_action_update		 = &screen_stage_update;
 		screen_action_render		 = &screen_stage_render;
 		screen_is_completed			 = &screen_stage_is_completed;
-		screen_action_window_resized = NULL;
+		screen_action_window_resized = &screen_stage_window_resized;
 		screen_action_init();
 		current_screen = SCREEN_STAGE;
 	}

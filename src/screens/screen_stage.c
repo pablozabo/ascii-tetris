@@ -17,7 +17,7 @@ typedef enum player_action_t
 	PLAYER_ACTION_MOVE_RIGHT = 2,
 	PLAYER_ACTION_ROTATE	 = 3,
 	PLAYER_ACTION_SPEEDUP	 = 4,
-	PLAYER_ACTION_HARD_DROP	 = 5,
+	PLAYER_ACTION_HARD_DROP	 = 5
 } player_action_t;
 
 static const uint8_t c_win_board_width		 = 22;
@@ -26,6 +26,8 @@ static const uint8_t c_win_next_shape_width	 = 20;
 static const uint8_t c_win_next_shape_height = 11;
 static const uint8_t c_win_score_width		 = 20;
 static const uint8_t c_win_score_height		 = 11;
+static const uint8_t c_win_paused_width		 = 20;
+static const uint8_t c_win_paused_height	 = 9;
 
 static const uint8_t   c_win_padding					= 1;
 static const uint8_t   c_score_velocity					= 30;
@@ -39,6 +41,7 @@ static const float32_t c_game_over_filled_rows_velocity = 0.05;
 static WINDOW *win_board;
 static WINDOW *win_next_shape;
 static WINDOW *win_score;
+static WINDOW *win_paused;
 
 static uint8_t		board[BOARD_ROWS * BOARD_COLS];
 static shape_t		next_shape;
@@ -54,6 +57,10 @@ static float32_t	filled_rows_elapsed_time;
 static float32_t	prev_shape_elapsed_time;
 static uint8_t		game_over_filled_rows;
 static float32_t	game_over_filled_rows_elapsed_time;
+
+static bool shape_shadow_enabled;
+static bool paused;
+static bool win_paused_active;
 
 // INIT
 static void create_windows(void);
@@ -78,6 +85,7 @@ static void update_score_labels(void);
 static void render_win_board(void);
 static void render_win_next_shape(void);
 static void render_win_score(void);
+static void render_win_paused(void);
 static void render_shape(WINDOW *win, shape_t *shape);
 static void render_board(void);
 
@@ -87,6 +95,8 @@ void screen_stage_init(void)
 	g_score.current_label = 0;
 	g_score.record_label  = g_score.record;
 
+	paused							   = false;
+	win_paused_active				   = false;
 	player_action					   = PLAYER_ACTION_IDLE;
 	level							   = 1;
 	current_shape_elapsed_time		   = 0;
@@ -123,6 +133,10 @@ void screen_stage_dispose(void)
 	wrefresh(win_score);
 	delwin(win_score);
 
+	wclear(win_paused);
+	wrefresh(win_paused);
+	delwin(win_paused);
+
 	sparse_set_dispose(&filled_rows_indexes);
 }
 
@@ -137,11 +151,15 @@ void screen_stage_update(void)
 	{
 		velocity = level;
 		handle_input();
-		move_shape();
-		handle_collision();
-		process_board_filled_rows();
-		process_prev_shape_animation();
-		update_score_labels();
+
+		if (!paused)
+		{
+			move_shape();
+			handle_collision();
+			process_board_filled_rows();
+			process_prev_shape_animation();
+			update_score_labels();
+		}
 	}
 	else
 	{
@@ -151,6 +169,25 @@ void screen_stage_update(void)
 
 void screen_stage_render(void)
 {
+	if (paused && !win_paused_active)
+	{
+		render_win_paused();
+	}
+	else if (!paused)
+	{
+		render_win_next_shape();
+		render_win_score();
+
+		wclear(win_board);
+		render_win_board();
+		render_shape(win_board, &current_shape);
+		render_board();
+		wrefresh(win_board);
+	}
+}
+
+void screen_stage_window_resized(void)
+{
 	render_win_next_shape();
 	render_win_score();
 
@@ -159,6 +196,11 @@ void screen_stage_render(void)
 	render_shape(win_board, &current_shape);
 	render_board();
 	wrefresh(win_board);
+
+	if (paused)
+	{
+		render_win_paused();
+	}
 }
 
 // UPDATE
@@ -175,6 +217,10 @@ static void create_windows(void)
 
 	win_score = newwin(c_win_score_height, c_win_score_width, offset_y + c_win_next_shape_height, offset_x + c_win_board_width);
 	scrollok(win_score, TRUE);
+
+	set_offset_yx(c_win_paused_height, c_win_paused_width, &offset_y, &offset_x);
+	win_paused = newwin(c_win_paused_height, c_win_paused_width, offset_y, offset_x);
+	scrollok(win_score, TRUE);
 }
 
 static void handle_input(void)
@@ -183,25 +229,34 @@ static void handle_input(void)
 
 	if (g_key > 0)
 	{
-		if (g_key == KEY_LEFT)
+		if (g_key == CH_LEFT)
 		{
 			player_action = PLAYER_ACTION_MOVE_LEFT;
 		}
-		else if (g_key == KEY_RIGHT)
+		else if (g_key == CH_RIGHT)
 		{
 			player_action = PLAYER_ACTION_MOVE_RIGHT;
 		}
-		else if (g_key == KEY_UP)
+		else if (g_key == CH_UP)
 		{
 			player_action = PLAYER_ACTION_ROTATE;
 		}
-		else if (g_key == KEY_DOWN && level < c_speedup_velocity)
+		else if (g_key == CH_DOWN && level < c_speedup_velocity)
 		{
 			player_action = PLAYER_ACTION_SPEEDUP;
 		}
 		else if (g_key == CH_SPACE)
 		{
 			player_action = PLAYER_ACTION_HARD_DROP;
+		}
+		else if (g_key == CH_PAUSE_L || g_key == CH_PAUSE_U)
+		{
+			paused			  = !paused;
+			win_paused_active = false;
+		}
+		else if (g_key == CH_SHAPE_SHADOW_L || g_key == CH_SHAPE_SHADOW_U)
+		{
+			shape_shadow_enabled = !shape_shadow_enabled;
 		}
 	}
 }
@@ -464,8 +519,6 @@ static void scan_board_filled_rows(void)
 	}
 }
 
-// there's a bug in this method. For some reason,
-// there are occasions when more rows than expected are removed
 static void process_board_filled_rows(void)
 {
 	uint8_t filled_rows_length = VECTOR_LENGTH(filled_rows_indexes.dense);
@@ -680,6 +733,7 @@ static void render_win_next_shape()
 
 static void render_win_score()
 {
+	wclear(win_score);
 	char		max_score[10]		= { '\0' };
 	char		current_score[10]	= { '\0' };
 	const char *title				= "SCORE";
@@ -710,6 +764,21 @@ static void render_win_score()
 	wattroff(win_score, COLOR_PAIR(COLOR_PAIR_GREEN_DEFAULT));
 
 	wrefresh(win_score);
+}
+
+static void render_win_paused(void)
+{
+	const char *title = "Paused";
+
+	wclear(win_paused);
+	wattron(win_paused, COLOR_PAIR(COLOR_PAIR_RED_MEDIUM));
+	box(win_paused, 0, 0);
+	wattroff(win_paused, COLOR_PAIR(COLOR_PAIR_RED_MEDIUM));
+
+	mvwprintw(win_paused, floor(c_win_paused_height * 0.5), (c_win_paused_width * 0.5) - floor(strlen(title) * 0.5), "%s", title);
+
+	wrefresh(win_paused);
+	win_paused_active = true;
 }
 
 static void render_shape(WINDOW *win, shape_t *shape)
