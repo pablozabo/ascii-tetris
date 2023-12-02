@@ -853,6 +853,7 @@ static void render_board(void)
 
 				bool filled_row = SPARSE_SET_CONTAINS(filled_rows_indexes, y);
 
+				// white highlight for filled (completed) rows
 				if (filled_row)
 				{
 					color = COLOR_PAIR_WHITE_HIGH - ((uint8_t)((filled_rows_elapsed_time) * 10) % 3);
@@ -875,6 +876,7 @@ static void render_board(void)
 					mvwaddch(win_board, y + c_win_padding, (x * 2) + 1 + c_win_padding, CH_SHAPE_FILL);
 					wattroff(win_board, COLOR_PAIR(color));
 				}
+				// defaul blocks color
 				else
 				{
 					wattron(win_board, COLOR_PAIR(color));
