@@ -95,6 +95,8 @@ typedef struct shape_t
 	uint8_t		 padding_bottom;
 	uint8_t		 width;
 	uint8_t		 height;
+	uint8_t		 shadow_pos_y;
+	bool		 shadow;
 } shape_t;
 
 #endif
