@@ -26,8 +26,10 @@ static const uint8_t c_win_next_shape_width	 = 20;
 static const uint8_t c_win_next_shape_height = 11;
 static const uint8_t c_win_score_width		 = 20;
 static const uint8_t c_win_score_height		 = 11;
-static const uint8_t c_win_paused_width		 = 20;
-static const uint8_t c_win_paused_height	 = 9;
+static const uint8_t c_win_paused_width		 = 30;
+static const uint8_t c_win_paused_height	 = 10;
+static const uint8_t c_win_pause_hint_width	 = c_win_board_width + c_win_next_shape_width;
+static const uint8_t c_win_pause_hint_height = 2;
 
 static const uint8_t   c_win_padding					= 1;
 static const uint8_t   c_score_velocity					= 30;
@@ -42,6 +44,7 @@ static WINDOW *win_board;
 static WINDOW *win_next_shape;
 static WINDOW *win_score;
 static WINDOW *win_paused;
+static WINDOW *win_pause_hint;
 
 static uint8_t board[BOARD_ROWS * BOARD_COLS];
 static shape_t next_shape;
@@ -89,6 +92,7 @@ static void render_win_board(void);
 static void render_win_next_shape(void);
 static void render_win_score(void);
 static void render_win_paused(void);
+static void render_win_pause_hint(void);
 static void render_shape(WINDOW *win, shape_t *shape, bool shadow);
 static void render_board(void);
 
@@ -140,6 +144,10 @@ void screen_stage_dispose(void)
 	wrefresh(win_paused);
 	delwin(win_paused);
 
+	wclear(win_pause_hint);
+	wrefresh(win_pause_hint);
+	delwin(win_pause_hint);
+
 	sparse_set_dispose(&filled_rows_indexes);
 }
 
@@ -180,6 +188,7 @@ void screen_stage_render(void)
 	{
 		render_win_next_shape();
 		render_win_score();
+		render_win_pause_hint();
 
 		wclear(win_board);
 		render_win_board();
@@ -193,6 +202,7 @@ void screen_stage_window_resized(void)
 {
 	render_win_next_shape();
 	render_win_score();
+	render_win_pause_hint();
 
 	wclear(win_board);
 	render_win_board();
@@ -211,7 +221,7 @@ static void create_windows(void)
 {
 	uint8_t offset_y, offset_x;
 
-	set_offset_yx(c_win_board_height, c_win_board_width + c_win_next_shape_width, &offset_y, &offset_x);
+	set_offset_yx(c_win_board_height + c_win_pause_hint_height, c_win_board_width + c_win_next_shape_width, &offset_y, &offset_x);
 	win_board = newwin(c_win_board_height, c_win_board_width, offset_y, offset_x);
 	scrollok(win_board, TRUE);
 
@@ -220,6 +230,9 @@ static void create_windows(void)
 
 	win_score = newwin(c_win_score_height, c_win_score_width, offset_y + c_win_next_shape_height, offset_x + c_win_board_width);
 	scrollok(win_score, TRUE);
+
+	win_pause_hint = newwin(c_win_pause_hint_height, c_win_pause_hint_width, offset_y + c_win_board_height, offset_x);
+	scrollok(win_pause_hint, TRUE);
 
 	set_offset_yx(c_win_paused_height, c_win_paused_width, &offset_y, &offset_x);
 	win_paused = newwin(c_win_paused_height, c_win_paused_width, offset_y, offset_x);
@@ -784,17 +797,44 @@ static void render_win_score()
 
 static void render_win_paused(void)
 {
-	const char *title = "Paused";
+	uint8_t		y					  = 2;
+	uint8_t		padding_x			  = c_win_padding * 2;
+	const char *title				  = "PAUSED";
+	const char *key_label_left		  = "left         : arrow left";
+	const char *key_label_right		  = "right        : arrow right";
+	const char *key_label_rotate	  = "rotate       : arrow up";
+	const char *key_label_speedup	  = "speed up     : arrow down";
+	const char *key_label_hard_drop	  = "hard drop    : space";
+	const char *key_label_shadow_mode = "shape shadow : s";
 
 	wclear(win_paused);
-	wattron(win_paused, COLOR_PAIR(COLOR_PAIR_RED_MEDIUM));
+	wattron(win_paused, COLOR_PAIR(COLOR_PAIR_MAGENTA_MEDIUM));
 	box(win_paused, 0, 0);
-	wattroff(win_paused, COLOR_PAIR(COLOR_PAIR_RED_MEDIUM));
+	wattroff(win_paused, COLOR_PAIR(COLOR_PAIR_MAGENTA_MEDIUM));
 
-	mvwprintw(win_paused, floor(c_win_paused_height * 0.5), (c_win_paused_width * 0.5) - floor(strlen(title) * 0.5), "%s", title);
+	// title
+	wattron(win_paused, COLOR_PAIR(COLOR_PAIR_MAGENTA_HIGH));
+	mvwprintw(win_paused, 0, (c_win_paused_width * 0.5) - floor(strlen(title) * 0.5), "%s", title);
+	wattroff(win_paused, COLOR_PAIR(COLOR_PAIR_MAGENTA_HIGH));
+	// key controls
+	mvwprintw(win_paused, y++, padding_x, "%s", key_label_left);
+	mvwprintw(win_paused, y++, padding_x, "%s", key_label_right);
+	mvwprintw(win_paused, y++, padding_x, "%s", key_label_rotate);
+	mvwprintw(win_paused, y++, padding_x, "%s", key_label_speedup);
+	mvwprintw(win_paused, y++, padding_x, "%s", key_label_hard_drop);
+	mvwprintw(win_paused, y++, padding_x, "%s", key_label_shadow_mode);
 
 	wrefresh(win_paused);
 	win_paused_active = true;
+}
+
+static void render_win_pause_hint(void)
+{
+	const char *label = "*press (p) to open pause/options menu";
+
+	wclear(win_pause_hint);
+	mvwprintw(win_pause_hint, 0, 0, "%s", label);
+	wrefresh(win_pause_hint);
 }
 
 static void render_shape(WINDOW *win, shape_t *shape, bool shadow)
