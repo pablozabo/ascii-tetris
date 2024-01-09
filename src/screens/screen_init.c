@@ -75,7 +75,7 @@ static void render_splash(void)
 		x = 0,
 		y = 0;
 
-	wclear(win_splash);
+	werase(win_splash);
 	wattron(win_splash, COLOR_PAIR(COLOR_PAIR_YELLOW_DEFAULT));
 
 	while ((ch = g_asset_splash[i++]) != CH_EOS)

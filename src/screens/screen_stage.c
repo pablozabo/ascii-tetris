@@ -190,7 +190,7 @@ void screen_stage_render(void)
 		render_win_score();
 		render_win_pause_hint();
 
-		wclear(win_board);
+		werase(win_board);
 		render_win_board();
 		render_shape(win_board, &current_shape, shape_shadow_enabled);
 		render_board();
@@ -204,7 +204,7 @@ void screen_stage_window_resized(void)
 	render_win_score();
 	render_win_pause_hint();
 
-	wclear(win_board);
+	werase(win_board);
 	render_win_board();
 	render_shape(win_board, &current_shape, shape_shadow_enabled);
 	render_board();
@@ -731,7 +731,7 @@ static void render_win_board(void)
 
 static void render_win_next_shape()
 {
-	wclear(win_next_shape);
+	werase(win_next_shape);
 	char		level_count[3] = { '\0' };
 	const char *title		   = "NEXT";
 	const char *lines_label	   = "Level:";
@@ -762,7 +762,7 @@ static void render_win_next_shape()
 
 static void render_win_score()
 {
-	wclear(win_score);
+	werase(win_score);
 	char		max_score[10]		= { '\0' };
 	char		current_score[10]	= { '\0' };
 	const char *title				= "SCORE";
@@ -807,7 +807,7 @@ static void render_win_paused(void)
 	const char *key_label_hard_drop	  = "hard drop    : space";
 	const char *key_label_shadow_mode = "shape shadow : s";
 
-	wclear(win_paused);
+	werase(win_paused);
 	wattron(win_paused, COLOR_PAIR(COLOR_PAIR_MAGENTA_MEDIUM));
 	box(win_paused, 0, 0);
 	wattroff(win_paused, COLOR_PAIR(COLOR_PAIR_MAGENTA_MEDIUM));

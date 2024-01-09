@@ -15,6 +15,7 @@ ifeq ($(OS), Linux)
 	FixPath = $1
 	EXE_NAME = tetris
 	EXTERNAL_LIB := -lncurses
+	INCLUDES :=	-Iinclude -Isrc/screens
 else ifeq ($(findstring MSYS_NT,$(OS)), MSYS_NT)
 	MKDIR = mkdir -p
 	SED = sed
@@ -24,13 +25,12 @@ else ifeq ($(findstring MSYS_NT,$(OS)), MSYS_NT)
 	FixPath = $(subst /,\,$1)
 	EXE_NAME = tetris.exe
 	EXTERNAL_LIB := -Lexternal/pdcurses/lib -lpdcurses
+	INCLUDES :=	-Iinclude -Isrc/screens -Iexternal/pdcurses/include
 endif
 
 CC = gcc
 CFLAGS := -ggdb -Wall -std=c99 -Wextra -Wswitch-enum
 BUILD_PATH := build/debug
-
-includes :=	-Iinclude -Isrc/screens -Iexternal/pdcurses/include
 
 #build folders
 BIN_PATH := $(BUILD_PATH)/bin
@@ -81,5 +81,5 @@ $(BUILD_PATH):
 df = $(TEMP_PATH)/$(*F)
 
 $(TEMP_PATH)/%.o: %.c
-	$(CC) -MM -MP -MT $(df).o -MT $(df).d $(CFLAGS) $(includes) $< > $(df).d
-	$(CC) -c $< $(CFLAGS) $(includes) -o $(df).o
+	$(CC) -MM -MP -MT $(df).o -MT $(df).d $(CFLAGS) $(INCLUDES) $< > $(df).d
+	$(CC) -c $< $(CFLAGS) $(INCLUDES) -o $(df).o

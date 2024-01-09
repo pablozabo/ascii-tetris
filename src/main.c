@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 199309L
 #include "common.h"
 #include "defs.h"
 #include "screens/screens.h"
@@ -15,6 +16,9 @@ typedef enum screen_t
 	SCREEN_GAME_OVER = 3
 } screen_t;
 
+typedef void (*screen_action_t)(void);
+typedef bool (*screen_is_completed_t)(void);
+
 // #GLOBAL VARIABLES
 bool	  g_running = true;
 int		  g_key;
@@ -23,7 +27,7 @@ char	 *g_asset_splash	= NULL;
 char	 *g_asset_game_over = NULL;
 score_t	  g_score			= { .current = 0 };
 
-static const float32_t c_target_frame_time = 1000 / 30; // 30 FPS
+static const float32_t c_target_frame_time = 1.0 / 20.0; // 20 FPS
 
 static screen_action_t		 screen_action_init			  = NULL;
 static screen_action_t		 screen_action_dispose		  = NULL;
@@ -35,13 +39,14 @@ static screen_t				 current_screen				  = 0;
 
 static float32_t last_update_time = 0.0;
 
-static void init(void);
-static void dispose(void);
-static void load_assets(void);
-static void load_asset(const char *file, char **dest);
-static void load_score(void);
-static void update_state(void);
-static void loop(void);
+static void		 init(void);
+static void		 dispose(void);
+static void		 load_assets(void);
+static void		 load_asset(const char *file, char **dest);
+static void		 load_score(void);
+static void		 update_state(void);
+static void		 loop(void);
+static float32_t get_current_time(void);
 
 int main(int argc, char *argv[])
 {
@@ -173,6 +178,8 @@ static void dispose(void)
 
 static void loop(void)
 {
+	last_update_time = get_current_time();
+
 	while (g_running)
 	{
 		g_key = getch();
@@ -195,15 +202,17 @@ static void loop(void)
 			}
 		}
 
-		float32_t real_delta_time = CURRENT_TIME - last_update_time;
-		last_update_time += real_delta_time;
+		float32_t now			  = get_current_time();
+		float32_t real_delta_time = now - last_update_time;
+		last_update_time		  = now;
 
 		if (real_delta_time < c_target_frame_time)
 		{
-			napms(c_target_frame_time - real_delta_time);
+			uint32_t ms = (uint32_t)((c_target_frame_time - real_delta_time) * 1000);
+			napms(ms);
 		}
 
-		g_delta_time = real_delta_time / 1000;
+		g_delta_time = real_delta_time;
 
 		update_state();
 		screen_action_update();
@@ -289,4 +298,12 @@ static void load_score(void)
 
 	fscanf(f, "%hu;", &g_score.record);
 	fclose(f);
+}
+
+static float32_t get_current_time(void)
+{
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+
+	return now.tv_sec + (now.tv_nsec / 1e9);
 }

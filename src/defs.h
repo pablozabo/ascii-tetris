@@ -4,6 +4,7 @@
 #include <curses.h>
 #include <math.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,19 +12,10 @@
 #include <time.h>
 
 // TYPES
-typedef signed char	   int8_t;
-typedef unsigned char  uint8_t;
-typedef signed short   int16_t;
-typedef unsigned short uint16_t;
-typedef int			   int32_t;
-typedef unsigned	   uint32_t;
-typedef float		   float32_t;
-typedef void (*screen_action_t)(void);
-typedef bool (*screen_is_completed_t)(void);
+typedef float  float32_t;
+typedef double float64_t;
 
 // DEFS
-#define CURRENT_TIME (1000.0 * clock() / CLOCKS_PER_SEC)
-
 #define CH_SHAPE_SOLID_FILL ACS_BLOCK
 #define CH_SHAPE_FILL ACS_CKBOARD
 #define CH_SHAPE_SPINE ACS_BTEE
