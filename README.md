@@ -21,7 +21,7 @@ cd build/debug/bin
 First download and install [mingw](https://www.mingw-w64.org/downloads/#w64devkit).
 
 **NOTE:** there's a dependency to pdcurses library (ncureses port for Windows platform) that it's
-already compiled and located on `ascii-snake\external\pdcurses\lib` folder. You can also
+already compiled and located on `ascii-tetris\external\pdcurses\lib` folder. You can also
 download the source code from `https://github.com/wmcbrine/PDCurses` and compile it.
 
 Finally open a terminal and execute the following steps:
