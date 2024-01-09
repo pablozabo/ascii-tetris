@@ -14,7 +14,7 @@ ifeq ($(OS), Linux)
 	RM = rm -r
 	FixPath = $1
 	EXE_NAME = tetris
-	EXTERNAL_LIB := -lncurses
+	EXTERNAL_LIB := -lncurses -lm
 	INCLUDES :=	-Iinclude -Isrc/screens
 else ifeq ($(findstring MSYS_NT,$(OS)), MSYS_NT)
 	MKDIR = mkdir -p
