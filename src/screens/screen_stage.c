@@ -236,7 +236,7 @@ static void create_windows(void)
 
 	set_offset_yx(c_win_paused_height, c_win_paused_width, &offset_y, &offset_x);
 	win_paused = newwin(c_win_paused_height, c_win_paused_width, offset_y, offset_x);
-	scrollok(win_score, TRUE);
+	scrollok(win_paused, TRUE);
 }
 
 static void handle_input(void)
