@@ -50,5 +50,7 @@ Module.symvers
 dkms.conf
 build
 CMakeFiles
+
 .vscode
+log.txt
 
